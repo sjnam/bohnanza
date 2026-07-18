@@ -53,10 +53,10 @@ graph TD
 
 ## 요구 도구
 
-- **Go 1.26 이상**
-- **GWEB** — 한글 문학적 프로그래밍 도구(`gtangle`, `gweave`). `.w`를 Go
-  소스와 TeX로 바꾼다. tangle 산출물(`*.go`)은 버전 관리에 넣지 않으므로,
-  빌드 전에 `make tangle`이 필요하다.
+- **Go 1.26 이상** — 이것만 있으면 clone 후 바로 빌드된다. tangle 산출물
+  (`*.go`)을 저장소에 함께 두어, 받는 쪽엔 GWEB이 필요 없다.
+- **GWEB**(`gtangle`, `gweave`) — `.w`를 **고칠 때만** 필요하다. `.w`를
+  Go 소스와 TeX로 바꾼다. 고쳤다면 `make tangle`로 `.go`를 다시 낳는다.
 - (문서 PDF를 뽑을 때만) **LuaTeX**와 `kotexgweb`
 
 ## 빌드와 실행
