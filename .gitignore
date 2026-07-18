@@ -1,0 +1,32 @@
+# tangle 생성물 (.w가 원본, .go는 gtangle 산출물)
+/bot/bot.go
+/bot/bot_test.go
+/bohnanza.go
+/bohnanza_test.go
+/cli/cli.go
+/server/server.go
+
+# weave/luatex 조판 부산물
+*.tex
+*.pdf
+*.log
+*.toc
+*.aux
+*.out
+
+# MetaPost 그림 부산물
+*.mpx
+*-1.pdf
+mptextmp.mp
+
+# Go
+/bin/
+*.test
+coverage*.out
+
+# 편집기·OS
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
