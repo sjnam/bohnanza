@@ -92,6 +92,7 @@ type Game struct {
 	chatLog []ChatMsg    // 늦게 붙는 사람에게 되보낼 최근 채팅
 	chatSeq int          // 채팅 순번(재접속 시 중복 걸러내기용, 절대 되감지 않음)
 	turnActive int       // 채팅이 매인 턴(활성 플레이어). 바뀌면 채팅을 비운다
+	lastSeen time.Time   // 마지막 활동 시각. 오래 놀고 아무도 안 보면 청소부가 치운다
 }
 
 @ 한 플레이어에게 보내는 갱신 한 통은 그의 뷰, 직전 이벤트, 그리고 어느 자리가
@@ -117,6 +118,7 @@ func (g *Game) register(player int) *sub {
 	s := &sub{id: g.nextID, player: player, ch: make(chan []byte, 64)}
 	g.nextID++
 	g.subs[s.id] = s
+	g.lastSeen = time.Now()
 	s.ch <- sseFrame("", g.encode(player, nil))
 	for _, m := range g.chatLog {
 		data, _ := json.Marshal(m)
@@ -144,6 +146,7 @@ func (g *Game) claim() (int, bool) {
 	for p, taken := range g.claimed {
 		if !taken {
 			g.claimed[p] = true
+			g.lastSeen = time.Now()
 			return p, true
 		}
 	}
@@ -187,6 +190,7 @@ func (g *Game) apply(a bz.Action) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	g.lastSeen = time.Now()
 	g.rolloverChat()
 	g.broadcast(events)
 	g.runBots()
@@ -303,8 +307,8 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	code := h.freshCode()
 	g := &Game{code: code, state: st, subs: map[int]*sub{},
 		claimed: make([]bool, players), bots: make([]bot.Policy, players),
-		names: make([]string, players),
-		rng:   mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
+		names:    make([]string, players), lastSeen: time.Now(),
+		rng: mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
 	for p := range g.names {
 		g.names[p] = fmt.Sprintf("%d번", p) // 사람은 참가 때 이름으로 바뀐다
 	}
@@ -349,6 +353,50 @@ func (h *Hub) session(tok string) (*Game, int, bool) {
 	defer h.mu.Unlock()
 	s, ok := h.sessions[tok]
 	return s.game, s.player, ok
+}
+
+@ 방은 메모리에만 있으므로, 그냥 두면 끝난 판과 버려진 방이 끝없이 쌓인다.
+|reap|은 관리소를 훑어 {\it 버려진\/} 방을 방과 그 세션까지 지운다. 버려졌다고
+보는 기준은 두 가지가 함께 참일 때다: 지금 보고 있는 구독자가 하나도 없고,
+마지막 활동에서 |roomTTL|보다 오래 지났을 것. 활동 중인 판(봇끼리라도 수가
+오가면 |lastSeen|이 갱신된다)이나 누군가 화면을 열어 둔 방은 건드리지 않는다.
+@^메모리 누수@>
+@<게임 관리소@>=
+const (
+	roomTTL    = time.Hour       // 이만큼 놀고 아무도 안 보면 버려진 방
+	sweepEvery = 10 * time.Minute // 이 간격으로 방을 훑는다
+)
+
+func (h *Hub) reap(now time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for code, g := range h.games {
+		g.mu.Lock()
+		if len(g.subs) == 0 && now.Sub(g.lastSeen) > roomTTL {
+			delete(h.games, code)
+			@<이 방을 가리키는 세션을 지운다@>@;
+		}
+		g.mu.Unlock()
+	}
+}
+
+@ 방 뮤텍스를 쥔 채로 지우므로, 지우는 사이에 새 구독자가 끼어들 틈이 없다
+(구독자 등록도 같은 뮤텍스를 거친다). 관리소 뮤텍스를 먼저, 방 뮤텍스를 나중에
+잡는 순서는 서버 어디서나 지켜지니, 이렇게 겹쳐 잡아도 엉키지 않는다.
+@<이 방을 가리키는 세션을 지운다@>=
+for tok, s := range h.sessions {
+	if s.game == g {
+		delete(h.sessions, tok)
+	}
+}
+
+@ 청소부는 |sweepEvery|마다 깨어나 한 번씩 훑는 고루틴이다. |main|이 서버를
+열기 전에 하나 띄운다.
+@<게임 관리소@>=
+func (h *Hub) janitor() {
+	for range time.Tick(sweepEvery) {
+		h.reap(time.Now())
+	}
 }
 
 @ 코드와 토큰을 짓는 잔손질이다. 방 코드는 헷갈리는 글자($0$\slash O,
@@ -556,6 +604,7 @@ func (g *Game) chat(from int, text string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.chatSeq++
+	g.lastSeen = time.Now()
 	m := ChatMsg{Seq: g.chatSeq, From: from, Text: text}
 	g.chatLog = append(g.chatLog, m)
 	if len(g.chatLog) > 30 {
@@ -626,6 +675,7 @@ func main() {
 		addr = os.Args[1]
 	}
 	h := newHub()
+	go h.janitor()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /games", h.handleNew)
 	mux.HandleFunc("POST /games/{code}/join", h.handleJoin)

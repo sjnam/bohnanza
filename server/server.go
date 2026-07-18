@@ -1,4 +1,4 @@
-//line server.w:43
+//line server/server.w:43
 package main
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/sjnam/bohnanza/bot"
 )
 
-//line server.w:76
+//line server/server.w:76
 type sub struct {
 	id     int
 	player int
@@ -39,9 +39,10 @@ type Game struct {
 	chatLog    []ChatMsg    // 늦게 붙는 사람에게 되보낼 최근 채팅
 	chatSeq    int          // 채팅 순번(재접속 시 중복 걸러내기용, 절대 되감지 않음)
 	turnActive int          // 채팅이 매인 턴(활성 플레이어). 바뀌면 채팅을 비운다
+	lastSeen   time.Time    // 마지막 활동 시각. 오래 놀고 아무도 안 보면 청소부가 치운다
 }
 
-//line server.w:102
+//line server/server.w:103
 type Message struct {
 	Board  bz.View  `json:"view"`
 	Events []string `json:"events"`
@@ -49,13 +50,14 @@ type Message struct {
 	Names  []string `json:"names"` // 자리마다의 표시 이름
 }
 
-//line server.w:114
+//line server/server.w:115
 func (g *Game) register(player int) *sub {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	s := &sub{id: g.nextID, player: player, ch: make(chan []byte, 64)}
 	g.nextID++
 	g.subs[s.id] = s
+	g.lastSeen = time.Now()
 	s.ch <- sseFrame("", g.encode(player, nil))
 	for _, m := range g.chatLog {
 		data, _ := json.Marshal(m)
@@ -73,13 +75,14 @@ func (g *Game) unregister(s *sub) {
 	}
 }
 
-//line server.w:141
+//line server/server.w:143
 func (g *Game) claim() (int, bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for p, taken := range g.claimed {
 		if !taken {
 			g.claimed[p] = true
+			g.lastSeen = time.Now()
 			return p, true
 		}
 	}
@@ -92,7 +95,7 @@ func (g *Game) view(player int) bz.View {
 	return g.state.View(player)
 }
 
-//line server.w:164
+//line server/server.w:167
 func (g *Game) setName(player int, name string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -106,7 +109,7 @@ func (g *Game) setName(player int, name string) {
 	g.broadcast(nil)
 }
 
-//line server.w:183
+//line server/server.w:186
 func (g *Game) apply(a bz.Action) ([]string, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -114,13 +117,14 @@ func (g *Game) apply(a bz.Action) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	g.lastSeen = time.Now()
 	g.rolloverChat()
 	g.broadcast(events)
 	g.runBots()
 	return events, nil
 }
 
-//line server.w:201
+//line server/server.w:205
 func (g *Game) runBots() {
 	for !g.state.Over() {
 		p := g.state.ToAct()
@@ -136,7 +140,7 @@ func (g *Game) runBots() {
 	}
 }
 
-//line server.w:221
+//line server/server.w:225
 func (g *Game) broadcast(events []string) {
 	for _, s := range g.subs {
 		f := sseFrame("", g.encode(s.player, events))
@@ -147,7 +151,7 @@ func (g *Game) broadcast(events []string) {
 	}
 }
 
-//line server.w:235
+//line server/server.w:239
 func sseFrame(event string, data []byte) []byte {
 	if event == "" {
 		return []byte("data: " + string(data) + "\n\n")
@@ -155,7 +159,7 @@ func sseFrame(event string, data []byte) []byte {
 	return []byte("event: " + event + "\ndata: " + string(data) + "\n\n")
 }
 
-//line server.w:246
+//line server/server.w:250
 func (g *Game) encode(player int, events []string) []byte {
 	b, _ := json.Marshal(Message{Board: g.state.View(player),
 		Events: events, Bots: g.botFlags(), Names: g.names})
@@ -170,7 +174,7 @@ func (g *Game) botFlags() []bool {
 	return f
 }
 
-//line server.w:267
+//line server/server.w:271
 type session struct {
 	game   *Game
 	player int
@@ -192,7 +196,7 @@ func (h *Hub) get(code string) *Game {
 	return h.games[code]
 }
 
-//line server.w:293
+//line server/server.w:297
 func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	if bots < 0 || bots >= players {
 		return "", fmt.Errorf("봇은 0명 이상 %d명 미만이어야 함", players)
@@ -206,25 +210,25 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	code := h.freshCode()
 	g := &Game{code: code, state: st, subs: map[int]*sub{},
 		claimed: make([]bool, players), bots: make([]bot.Policy, players),
-		names: make([]string, players),
-		rng:   mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
+		names: make([]string, players), lastSeen: time.Now(),
+		rng: mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
 	for p := range g.names {
 		g.names[p] = fmt.Sprintf("%d번", p) // 사람은 참가 때 이름으로 바뀐다
 	}
 
-//line server.w:320
+//line server/server.w:324
 	for p := players - bots; p < players; p++ {
 		g.bots[p] = bot.NewGreedy()
 		g.claimed[p] = true
 		g.names[p] = fmt.Sprintf("봇 %d", p-(players-bots)+1)
 	}
 
-//line server.w:312
+//line server/server.w:316
 	h.games[code] = g
 	return code, nil
 }
 
-//line server.w:330
+//line server/server.w:334
 func (h *Hub) join(code, name string) (int, string, error) {
 	g := h.get(code)
 	if g == nil {
@@ -249,7 +253,41 @@ func (h *Hub) session(tok string) (*Game, int, bool) {
 	return s.game, s.player, ok
 }
 
-//line server.w:359
+//line server/server.w:365
+const (
+	roomTTL    = time.Hour        // 이만큼 놀고 아무도 안 보면 버려진 방
+	sweepEvery = 10 * time.Minute // 이 간격으로 방을 훑는다
+)
+
+func (h *Hub) reap(now time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for code, g := range h.games {
+		g.mu.Lock()
+		if len(g.subs) == 0 && now.Sub(g.lastSeen) > roomTTL {
+			delete(h.games, code)
+
+//line server/server.w:387
+			for tok, s := range h.sessions {
+				if s.game == g {
+					delete(h.sessions, tok)
+				}
+			}
+
+//line server/server.w:378
+		}
+		g.mu.Unlock()
+	}
+}
+
+//line server/server.w:396
+func (h *Hub) janitor() {
+	for range time.Tick(sweepEvery) {
+		h.reap(time.Now())
+	}
+}
+
+//line server/server.w:407
 const codeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 func randCode() string {
@@ -277,7 +315,7 @@ func randToken() string {
 	return hex.EncodeToString(b[:])
 }
 
-//line server.w:392
+//line server/server.w:440
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
@@ -291,7 +329,7 @@ func (h *Hub) auth(w http.ResponseWriter, r *http.Request) (*Game, int, bool) {
 	return g, player, ok
 }
 
-//line server.w:409
+//line server/server.w:457
 func requestToken(r *http.Request) string {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimPrefix(h, "Bearer ")
@@ -302,7 +340,7 @@ func requestToken(r *http.Request) string {
 	return ""
 }
 
-//line server.w:423
+//line server/server.w:471
 func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	players, bots := 3, 0
 	if v := r.URL.Query().Get("players"); v != "" {
@@ -325,7 +363,7 @@ func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"code": code, "players": players, "bots": bots})
 }
 
-//line server.w:449
+//line server/server.w:497
 func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	player, tok, err := h.join(r.PathValue("code"), r.URL.Query().Get("name"))
 	if err != nil {
@@ -335,7 +373,7 @@ func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"player": player, "token": tok})
 }
 
-//line server.w:460
+//line server/server.w:508
 func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -344,7 +382,7 @@ func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, g.view(player))
 }
 
-//line server.w:473
+//line server/server.w:521
 func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -364,7 +402,7 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, Message{Board: g.view(player), Events: events, Bots: g.botFlags()})
 }
 
-//line server.w:496
+//line server/server.w:544
 func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -376,7 +414,7 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-//line server.w:513
+//line server/server.w:561
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -396,26 +434,27 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-//line server.w:507
+//line server/server.w:555
 }
 
-//line server.w:535
+//line server/server.w:583
 func handleCatalog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, bz.Catalog())
 }
 
-//line server.w:544
+//line server/server.w:592
 type ChatMsg struct {
 	Seq  int    `json:"seq"` // 방 안에서 늘 커지는 순번
 	From int    `json:"from"`
 	Text string `json:"text"`
 }
 
-//line server.w:555
+//line server/server.w:603
 func (g *Game) chat(from int, text string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.chatSeq++
+	g.lastSeen = time.Now()
 	m := ChatMsg{Seq: g.chatSeq, From: from, Text: text}
 	g.chatLog = append(g.chatLog, m)
 	if len(g.chatLog) > 30 {
@@ -430,7 +469,7 @@ func (g *Game) chat(from int, text string) {
 	}
 }
 
-//line server.w:578
+//line server/server.w:627
 func (g *Game) rolloverChat() {
 	if g.state.Active != g.turnActive {
 		g.turnActive = g.state.Active
@@ -438,7 +477,7 @@ func (g *Game) rolloverChat() {
 	}
 }
 
-//line server.w:589
+//line server/server.w:638
 func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -452,7 +491,7 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-//line server.w:606
+//line server/server.w:655
 	text := strings.TrimSpace(body.Text)
 	if text == "" {
 		w.WriteHeader(http.StatusNoContent)
@@ -464,16 +503,17 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 	g.chat(player, text)
 	w.WriteHeader(http.StatusNoContent)
 
-//line server.w:602
+//line server/server.w:651
 }
 
-//line server.w:623
+//line server/server.w:672
 func main() {
 	addr := ":8080"
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 	}
 	h := newHub()
+	go h.janitor()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /games", h.handleNew)
 	mux.HandleFunc("POST /games/{code}/join", h.handleJoin)
