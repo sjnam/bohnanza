@@ -87,8 +87,7 @@ const (
 	NumBeans
 )
 
-// |Card|는 콩 한 알과 같다.
-type Card = Bean
+type Card = Bean // |Card|는 콩 한 알과 같다.
 
 @ 각 콩의 고정 정보를 담는 표다. |Meter|의 네 칸은 차례로 1,2,3,4코인에
 필요한 장수다.
@@ -96,7 +95,7 @@ type Card = Bean
 type BeanInfo struct {
 	Name  string
 	Count int    // 덱에 들어가는 장수
-	Meter [4]int // 1,2,3,4코인에 필요한 장수 (0은 도달 불가)
+	Meter [4]int // 1,2,3,4 코인에 필요한 장수 (0은 도달 불가)
 }
 
 var beanTable = [NumBeans]BeanInfo{
@@ -113,8 +112,7 @@ var beanTable = [NumBeans]BeanInfo{
 	Cocoa:     {"카카오콩", 4, [4]int{0, 2, 3, 4}},
 }
 
-// |TotalCards|는 덱 전체 장수(154)다.
-const TotalCards = 154
+const TotalCards = 154 // 덱 전체 장수(154)다.
 
 @ 두 조회 함수다. |Name|은 콩 이름을, |Coins|는 콩 $n$장을 거두었을 때 받는
 코인 수를 콩미터로 계산한다. 콩미터의 각 칸을 앞에서부터 훑어, 장수가 충분한
@@ -620,14 +618,14 @@ func (s *State) proposeActions(player int) []Action {
 			continue
 		}
 		theirs := distinct(s.Players[to].Hand)
-		@<상대 to와의 제안을 편다@>@;
+		@<상대 |to|와의 제안을 편다@>@;
 	}
 	return acts
 }
 
 @ 내가 내줄 콩(손패에서 또는 공개 카드에서) 하나마다, 상대 손패 콩 하나와
 맞바꾸는 교환과 그냥 주는 기부를 낸다.
-@<상대 to와의 제안을 편다@>=
+@<상대 |to|와의 제안을 편다@>=
 for _, gb := range mine {
 	for _, tb := range theirs {
 		acts = append(acts, Action{Kind: ProposeTrade, Actor: player, To: to,

@@ -32,8 +32,8 @@ type Game struct {
 	state      *bz.State
 	subs       map[int]*sub
 	nextID     int
-	claimed    []bool       // claimed[p]가 참이면 p번 자리에 이미 임자가 있다
-	bots       []bot.Policy // bots[p]가 nil이 아니면 p번 자리는 봇이다
+	claimed    []bool       // |claimed[p]|가 참이면 |p|번 자리에 이미 임자가 있다
+	bots       []bot.Policy // |bots[p]|가 |nil|이 아니면 |p|번 자리는 봇이다
 	names      []string     // 자리마다의 표시 이름(사람은 참가 때, 봇은 만들 때 정함)
 	rng        *mrand.Rand  // 봇 정책에 넘길 난수원
 	chatLog    []ChatMsg    // 늦게 붙는 사람에게 되보낼 최근 채팅
@@ -46,7 +46,7 @@ type Game struct {
 type Message struct {
 	Board  bz.View  `json:"view"`
 	Events []string `json:"events"`
-	Bots   []bool   `json:"bots"`  // bots[p]가 참이면 p번은 봇
+	Bots   []bool   `json:"bots"`  // |bots[p]|가 참이면 |p|번은 봇
 	Names  []string `json:"names"` // 자리마다의 표시 이름
 }
 

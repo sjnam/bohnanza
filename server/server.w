@@ -6,25 +6,25 @@
 \def\title{보난자 서버}
 
 @* 들어가며.
-이 프로그램은 보난자 게임 엔진(\.{bohnanza}) 위에 얹는 HTTP 서버다. 권위 있는
+이 프로그램은 보난자 게임 엔진(\.{bohnanza}) 위에 얹는 \.{HTTP} 서버다. 권위 있는
 게임 상태는 서버가 쥐고, 접속한 플레이어마다 {\it 자기 시점의 뷰\/}만 실시간으로
 흘려보낸다. 남의 손패나 덱 속은 서버 밖으로 나가지 않는다---엔진의 |View|가
 이미 그 경계를 긋고 있으니, 서버는 그것을 실어 나르기만 하면 된다.
 
 밀어내기(server push)는 SSE(Server-Sent Events)로 한다. 표준 라이브러리
 |net/http|만으로 서버$\to$클라이언트 실시간 전송이 되고, 클라이언트$\to$서버는
-평범한 POST로 충분하다. 외부 의존성이 없어 어디서나 곧장 돈다.
+평범한 \.{POST}로 충분하다. 외부 의존성이 없어 어디서나 곧장 돈다.
 
 @ API는 일곱 갈래다. 게임을 만들고, 방에 참가해 자리와 토큰을 받고, 자기 뷰를
 스트림으로 구독하고, 수를 보내고, 채팅하고, 필요하면 뷰를 한 번 찍어 오고, 콩
 도감을 받는다. 정적 웹 클라이언트(\.{web/index.html})는 서버가 아니라 앞단의
-nginx가 내보낸다---서버는 게임 API에만 집중한다.
+\.{nginx}가 내보낸다---서버는 게임 API에만 집중한다.
 
 $$\vbox{\halign{\indent\tt#\hfil&\quad#\hfil\cr
 POST /games&                 새 게임(인원\slash 봇수\slash 씨앗) $\to$ 방 코드\cr
 POST /games/:code/join&      빈자리 잡기 $\to$ 자리 번호 + 토큰\cr
 GET /stream&                 내 뷰를 SSE로 구독\cr
-POST /action&                액션(JSON)을 보냄\cr
+POST /action&                액션(\.{JSON})을 보냄\cr
 POST /chat&                  방에 채팅 한 줄 보냄\cr
 GET /view&                   내 뷰를 한 번 받음\cr
 GET /catalog&                콩 도감(고정 정보)\cr}}$$
@@ -33,8 +33,8 @@ GET /catalog&                콩 도감(고정 정보)\cr}}$$
 {\bf 방 코드\/}는 사람이 부르기 쉬운 짧은 코드고, {\bf 토큰\/}은 참가할 때 자리마다
 발급하는 비밀 열쇠다. 스트림\slash 액션\slash 뷰는 이 토큰으로 신원을 확인하므로,
 남의 자리로 수를 두는 것이 원천 봉쇄된다. 토큰은 URL에 싣지 않는다---%
-액션\slash 뷰는 |Authorization: Bearer| 머리글로, 스트림은 쿠키로 실어 보낸다(SSE의
-|EventSource|가 머리글을 못 실어서다). 클라이언트는 토큰을 간직했다가 새로고침
+액션\slash 뷰는 \.{Authorization: Bearer} 헤더로, 스트림은 쿠키로 실어 보낸다(SSE의
+\.{EventSource}가 헤더를 못 실어서다). 클라이언트는 토큰을 간직했다가 새로고침
 뒤에도 그대로 써서 같은 자리로 다시 붙는다.
 
 @ 프로그램은 한 \GO/ 패키지 |main|으로 나온다. |Hub|가 여러 게임 방을 관리하고,
@@ -63,7 +63,7 @@ import (
 @<게임 방과 구독자@>@;
 @<수를 적용하고 알리기@>@;
 @<게임 관리소@>@;
-@<HTTP 손잡이@>@;
+@<\.{HTTP} 손잡이@>@;
 @<채팅@>@;
 @<문 열기@>@;
 
@@ -85,8 +85,8 @@ type Game struct {
 	state   *bz.State
 	subs    map[int]*sub
 	nextID  int
-	claimed []bool       // claimed[p]가 참이면 p번 자리에 이미 임자가 있다
-	bots    []bot.Policy // bots[p]가 nil이 아니면 p번 자리는 봇이다
+	claimed []bool       // |claimed[p]|가 참이면 |p|번 자리에 이미 임자가 있다
+	bots    []bot.Policy // |bots[p]|가 |nil|이 아니면 |p|번 자리는 봇이다
 	names   []string     // 자리마다의 표시 이름(사람은 참가 때, 봇은 만들 때 정함)
 	rng     *mrand.Rand  // 봇 정책에 넘길 난수원
 	chatLog []ChatMsg    // 늦게 붙는 사람에게 되보낼 최근 채팅
@@ -103,7 +103,7 @@ type Game struct {
 type Message struct {
 	Board  bz.View  `json:"view"`
 	Events []string `json:"events"`
-	Bots   []bool   `json:"bots"`  // bots[p]가 참이면 p번은 봇
+	Bots   []bool   `json:"bots"`  // |bots[p]|가 참이면 |p|번은 봇
 	Names  []string `json:"names"` // 자리마다의 표시 이름
 }
 
@@ -126,7 +126,7 @@ func (g *Game) register(player int) *sub {
 	}
 	return s
 }
-
+@#
 func (g *Game) unregister(s *sub) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -152,7 +152,7 @@ func (g *Game) claim() (int, bool) {
 	}
 	return 0, false
 }
-
+@#
 func (g *Game) view(player int) bz.View {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -161,7 +161,7 @@ func (g *Game) view(player int) bz.View {
 
 @ 자리에 이름을 붙인다. 빈 이름이면 기본 자리 이름(``0번'' 따위)을 그대로 두고,
 너무 길면 스무 글자로 자른다. 홑화살괄호는 지워, 이름이 클라이언트 화면에서
-태그로 새는 것을 막는다(채팅 글과 달리 이름은 |innerHTML|에 박히기 때문이다).
+태그로 새는 것을 막는다(채팅 글과 달리 이름은 \.{innerHTML}에 박히기 때문이다).
 새 이름을 모두에게 곧장 알려, 방에 있던 이들의 화면에도 바로 뜨게 한다.
 @<게임 방과 구독자@>=
 func (g *Game) setName(player int, name string) {
@@ -233,8 +233,8 @@ func (g *Game) broadcast(events []string) {
 }
 
 @ SSE 한 프레임을 짓는다. 상태 갱신은 이벤트 이름 없는 기본 메시지로, 채팅은
-|event: chat| 줄을 앞세워 서로 다른 이벤트로 보낸다---클라이언트가 둘을 갈라
-받는다. 이름이 비면 |data:| 줄만 낸다.
+\.{event: chat} 줄을 앞세워 서로 다른 이벤트로 보낸다---클라이언트가 둘을
+갈라 받는다. 이름이 비면 \.{data:} 줄만 낸다.
 @<수를 적용하고 알리기@>=
 func sseFrame(event string, data []byte) []byte {
 	if event == "" {
@@ -243,7 +243,7 @@ func sseFrame(event string, data []byte) []byte {
 	return []byte("event: " + event + "\ndata: " + string(data) + "\n\n")
 }
 
-@ 한 통을 JSON으로 부호화한다. 뷰를 뜨는 일은 엔진의 |View|에 맡기므로 가림이
+@ 한 통을 \.{JSON}으로 부호화한다. 뷰를 뜨는 일은 엔진의 |View|에 맡기므로 가림이
 저절로 지켜지고, 봇 표식은 방이 안다. |botFlags|는 그 표식을 만든다---봇 자리는
 정책이 심겨 있어 |nil|이 아니다.
 @<수를 적용하고 알리기@>=
@@ -431,12 +431,12 @@ func randToken() string {
 	return hex.EncodeToString(b[:])
 }
 
-@* HTTP 손잡이.
+@* \.{HTTP} 손잡이.
 손잡이들은 얇다. 방을 만들거나 참가시키고, 토큰으로 신원을 확인한 뒤 엔진
-계층(|apply|\slash |view|)을 불러 결과를 JSON으로 돌려줄 뿐이다. 먼저 JSON
+계층(|apply|\slash |view|)을 불러 결과를 \.{JSON}으로 돌려줄 뿐이다. 먼저 \.{JSON}
 응답 잔손질과, 토큰으로 세션을 찾는 |auth|를 묶어 둔다---신원이 확인되지 않으면
 401을 돌려주고 거짓을 낸다.
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
@@ -450,10 +450,10 @@ func (h *Hub) auth(w http.ResponseWriter, r *http.Request) (*Game, int, bool) {
 	return g, player, ok
 }
 
-@ 토큰은 URL이 아니라 |Authorization: Bearer| 머리글에서 읽는다. SSE의
-|EventSource|는 머리글을 못 실으므로, 스트림만은 쿠키 |bz_token|을 대신 받는다.
+@ 토큰은 URL이 아니라 \.{Authorization: Bearer} 헤더에서 읽는다. SSE의
+\.{EventSource}는 헤더를 못 실으므로, 스트림만은 쿠키 |bz_token|을 대신 받는다.
 어느 쪽이든 토큰이 URL에 남지 않아 서버 로그에 새지 않는다.
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func requestToken(r *http.Request) string {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimPrefix(h, "Bearer ")
@@ -467,7 +467,7 @@ func requestToken(r *http.Request) string {
 @ 새 게임. 인원\slash 봇수\slash 씨앗을 질의에서 읽어 방을 열고 방 코드를
 돌려준다. 봇수를 안 주면 0(사람만)이다. 방을 만든 사람도 따로 참가해 자리를
 잡아야 한다(클라이언트가 곧바로 참가를 부른다).
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	players, bots := 3, 0
 	if v := r.URL.Query().Get("players"); v != "" {
@@ -493,7 +493,7 @@ func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 @ 참가. 방 코드로 빈자리를 하나 잡아, 배정된 자리 번호와 토큰을 돌려준다.
 클라이언트는 이 토큰을 간직했다가 이후 모든 요청에 실어 보낸다(새로고침 뒤
 다시 붙을 때도 같은 토큰을 그대로 쓰면 된다).
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	player, tok, err := h.join(r.PathValue("code"), r.URL.Query().Get("name"))
 	if err != nil {
@@ -504,7 +504,7 @@ func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 }
 
 @ 뷰 한 장을 찍어 준다. 토큰으로 신원을 확인하고 그 플레이어의 뷰를 준다.
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -517,7 +517,7 @@ func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 토큰의 자리로 {\it 덮어쓴다\/}---남의 자리로 두는 것을 원천 봉쇄한다. 불법이면
 409로 되돌린다. 성공하면 그 플레이어의 새 뷰와 이벤트를 즉답으로 주고, 나머지
 구독자들은 스트림으로 갱신을 받는다.
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -537,10 +537,10 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, Message{Board: g.view(player), Events: events, Bots: g.botFlags()})
 }
 
-@ 뷰 스트림. 토큰으로 신원을 확인한 뒤 SSE 머리글을 세우고 구독자로 등록한다.
-채널로 오는 갱신을 그대로 |data:| 줄에 실어 흘려보내고, 접속이 끊기면(요청
+@ 뷰 스트림. 토큰으로 신원을 확인한 뒤 SSE 헤더를 세우고 구독자로 등록한다.
+채널로 오는 갱신을 그대로 \.{data:} 줄에 실어 흘려보내고, 접속이 끊기면(요청
 맥락이 닫히면) 구독을 푼다.
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -551,13 +551,13 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "스트리밍을 지원하지 않음", http.StatusInternalServerError)
 		return
 	}
-	@<SSE 머리글을 세우고 갱신을 흘려보낸다@>@;
+	@<SSE 헤더를 세우고 갱신을 흘려보낸다@>@;
 }
 
-@ SSE 규약대로 |text/event-stream| 머리글을 세우고, 구독자로 등록한다. 그다음
+@ SSE 규약대로 \.{text/event-stream} 헤더를 세우고, 구독자로 등록한다. 그다음
 채널이 닫힐 때(구독 해제)나 접속이 끊길 때까지 프레임을 그대로 내보내며 그때마다
-버퍼를 비운다(flush). 프레임은 이미 |sseFrame|이 규약에 맞게 지어 두었다.
-@<SSE 머리글을 세우고 갱신을 흘려보낸다@>=
+버퍼를 비운다(flush). 프레임은 이미 \.{sseFrame}이 규약에 맞게 지어 두었다.
+@<SSE 헤더를 세우고 갱신을 흘려보낸다@>=
 w.Header().Set("Content-Type", "text/event-stream")
 w.Header().Set("Cache-Control", "no-cache")
 w.Header().Set("Connection", "keep-alive")
@@ -579,14 +579,14 @@ for {
 
 @ 콩 도감. 이름\slash 장수\slash 콩미터 같은 고정 정보라, 클라이언트가 처음에
 한 번만 받아 두면 된다.
-@<HTTP 손잡이@>=
+@<\.{HTTP} 손잡이@>=
 func handleCatalog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, bz.Catalog())
 }
 
 @* 채팅.
 거래는 흥정이라 말이 오간다. 참가자들이 서로 대화하도록 방마다 채팅을 얹는다.
-상태 갱신과 같은 SSE 관을 쓰되 |event: chat|으로 갈라 보내고, 늦게 붙는 사람을
+상태 갱신과 같은 SSE 관을 쓰되 \.{event: chat}으로 갈라 보내고, 늦게 붙는 사람을
 위해 최근 몇 줄을 방에 간직해 접속할 때 되보낸다. 봇은 말하지 않는다.
 @<채팅@>=
 type ChatMsg struct {
@@ -666,7 +666,7 @@ w.WriteHeader(http.StatusNoContent)
 @* 문 열기.
 |main|은 길을 잇고 문을 연다. 주소는 인수로 받되 없으면 |:8080|이다. \GO/
 1.22부터 |ServeMux|가 메서드와 경로 변수를 함께 받으므로, 라우팅도 표준
-라이브러리만으로 깔끔하다. 정적 파일은 앞단 nginx가 맡으므로, 여기에는 게임
+라이브러리만으로 깔끔하다. 정적 파일은 앞단 \.{nginx}가 맡으므로, 여기에는 게임
 API 길만 잇는다.
 @<문 열기@>=
 func main() {
