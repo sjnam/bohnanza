@@ -1,0 +1,14 @@
+# 빌드에 필요 없는 것(문서 조판 산출물, VCS, 호스트 빌드 결과)은 제외.
+# tangle된 *.go 와 go.mod 는 빌드에 필요하므로 남긴다. 웹 UI(server/web)는
+# 서버가 더는 품지 않고 nginx가 바인드 마운트로 내보내므로 빌드에서 제외한다.
+.git
+.gitignore
+*.tex
+*.pdf
+*.log
+*.toc
+*.idx
+*.scn
+*.mp
+server/server
+server/web

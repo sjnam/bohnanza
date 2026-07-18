@@ -15,12 +15,12 @@
 |net/http|만으로 서버$\to$클라이언트 실시간 전송이 되고, 클라이언트$\to$서버는
 평범한 POST로 충분하다. 외부 의존성이 없어 어디서나 곧장 돈다.
 
-@ API는 여덟 갈래다. 웹 클라이언트를 내려 주고, 게임을 만들고, 방에 참가해
-자리와 토큰을 받고, 자기 뷰를 스트림으로 구독하고, 수를 보내고, 채팅하고, 필요하면
-뷰를 한 번 찍어 오고, 콩 도감을 받는다.
+@ API는 일곱 갈래다. 게임을 만들고, 방에 참가해 자리와 토큰을 받고, 자기 뷰를
+스트림으로 구독하고, 수를 보내고, 채팅하고, 필요하면 뷰를 한 번 찍어 오고, 콩
+도감을 받는다. 정적 웹 클라이언트(\.{web/index.html})는 서버가 아니라 앞단의
+nginx가 내보낸다---서버는 게임 API에만 집중한다.
 
 $$\vbox{\halign{\indent\tt#\hfil&\quad#\hfil\cr
-GET /&                       웹 클라이언트(정적 페이지)\cr
 POST /games&                 새 게임(인원\slash 봇수\slash 씨앗) $\to$ 방 코드\cr
 POST /games/:code/join&      빈자리 잡기 $\to$ 자리 번호 + 토큰\cr
 GET /stream&                 내 뷰를 SSE로 구독\cr
@@ -44,11 +44,9 @@ package main
 
 import (
 	"crypto/rand"
-	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"log"
 	mrand "math/rand/v2"
 	"net/http"
@@ -67,7 +65,6 @@ import (
 @<게임 관리소@>@;
 @<HTTP 손잡이@>@;
 @<채팅@>@;
-@<웹 클라이언트@>@;
 @<문 열기@>@;
 
 @* 게임 방과 구독자.
@@ -617,27 +614,11 @@ if rs := []rune(text); len(rs) > 300 {
 g.chat(player, text)
 w.WriteHeader(http.StatusNoContent)
 
-@* 웹 클라이언트 끼워 넣기.
-브라우저에서 쓸 정적 웹 클라이언트(\.{web/index.html})를 실행 파일 안에 통째로
-박아 넣는다. |go:embed|가 |web| 디렉터리를 파일 시스템으로 잡아 주므로, 서버는
-어디서 실행하든---작업 디렉터리가 어디든---같은 페이지를 낸다. 이 한 파일이
-SSE로 뷰를 구독하고 합법수 버튼을 눌러 액션을 보내는 클라이언트 전부다.
-@<웹 클라이언트@>=
-//go:embed web
-var webFS embed.FS
-
-func webHandler() http.Handler {
-	sub, err := fs.Sub(webFS, "web")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return http.FileServer(http.FS(sub))
-}
-
 @* 문 열기.
 |main|은 길을 잇고 문을 연다. 주소는 인수로 받되 없으면 |:8080|이다. \GO/
 1.22부터 |ServeMux|가 메서드와 경로 변수를 함께 받으므로, 라우팅도 표준
-라이브러리만으로 깔끔하다.
+라이브러리만으로 깔끔하다. 정적 파일은 앞단 nginx가 맡으므로, 여기에는 게임
+API 길만 잇는다.
 @<문 열기@>=
 func main() {
 	addr := ":8080"
@@ -653,7 +634,6 @@ func main() {
 	mux.HandleFunc("POST /chat", h.handleChat)
 	mux.HandleFunc("GET /view", h.handleView)
 	mux.HandleFunc("GET /catalog", handleCatalog)
-	mux.Handle("GET /", webHandler())
 	log.Printf("보난자 서버 열림: %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }

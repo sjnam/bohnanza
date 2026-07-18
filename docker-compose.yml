@@ -1,0 +1,21 @@
+# nginx를 앞에 세워 정적 파일(웹 UI·이미지)은 nginx가 직접 내보내고,
+# 동적 API(SSE·액션·채팅 등)만 Go 서버(app)로 프록시한다.
+# 호스트 8080 포트로 서비스한다.
+
+services:
+  app:
+    build: .
+    expose:
+      - "8080"          # 호스트에 열지 않고, nginx만 접근한다.
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - app
+    ports:
+      - "8080:80"       # 호스트 8080 → nginx 80
+    volumes:
+      - ./server/web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

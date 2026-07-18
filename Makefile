@@ -58,8 +58,6 @@ server: tangle
 	go run ./server $(ARGS)
 
 clean:
-	rm -f bohnanza.go bohnanza_test.go cli/cli.go server/server.go
-	rm -f bot/bot.go bot/bot_test.go
 	rm -f bohnanza.tex bohnanza.log bohnanza.toc bohnanza.pdf
 	rm -f cli/cli.tex cli/cli.log cli/cli.toc cli/cli.pdf
 	rm -f server/server.tex server/server.log server/server.toc server/server.pdf
