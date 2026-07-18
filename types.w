@@ -1,7 +1,10 @@
 @s uint64 int
 @s Mutex int
+@s Rand int
+@s Reader int
 @s http.Request int
 @s http.ResponseWriter int
+
 @s Flusher int
 @s State int
 @s Action int
@@ -9,7 +12,6 @@
 @s Hub int
 @s Game int
 @s Message int
-@s Rand int
 @s Policy int
 @s Random int
 @s Greedy int
@@ -19,4 +21,3 @@
 @s FieldView int
 @s ProposalView int
 @s Phase int
-@s Reader int
