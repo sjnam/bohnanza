@@ -109,9 +109,10 @@ docker compose up --build
 
 접속: `http://localhost:8080`
 
-- **nginx** — 8080을 열고 `server/web`를 정적 루트로 서빙한다. `/games`·
-  `/stream`·`/action`·`/chat`·`/view`·`/catalog`만 앱으로 프록시하며, SSE
-  스트림은 버퍼링을 꺼 실시간 밀어내기를 지킨다.
+- **nginx** — 8080을 열고 `server/web`를 정적 루트로 서빙한다. 정적 파일이
+  있으면 직접 내고 없으면 앱으로 넘기므로(`try_files … @app`), API 길이
+  늘어도 설정을 손볼 필요가 없다. SSE 스트림만 버퍼링을 꺼 실시간 밀어내기를
+  지킨다.
 - **app** — Go 서버(컨테이너 안 8080, 호스트에 열지 않음). tangle된 `.go`를
   그대로 빌드하므로 이미지 안에서 GWEB이 필요 없다.
 
