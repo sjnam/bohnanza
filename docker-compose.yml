@@ -8,11 +8,20 @@ services:
     expose:
       - "8080"          # 호스트에 열지 않고, nginx만 접근한다.
     restart: unless-stopped
+    # /catalog는 인증 없이 늘 200을 주므로 살아 있음을 확인하기 좋다.
+    # 최종 이미지가 alpine이라 busybox wget이 이미 들어 있다.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/catalog"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
   nginx:
     image: nginx:alpine
     depends_on:
-      - app
+      app:
+        condition: service_healthy   # 앱이 실제로 응답할 때까지 기다린다(기동만이 아니라).
     ports:
       - "8080:80"       # 호스트 8080 → nginx 80
     volumes:
