@@ -44,20 +44,20 @@ import (
 	bz "github.com/sjnam/bohnanza/engine"
 )
 
-@<정책 인터페이스@>@;
-@<무작위 정책@>@;
-@<그리디 정책@>@;
-@<밭 고르기와 거두기 도우미@>@;
-@<심기 단계의 수@>@;
-@<거래 단계의 수@>@;
-@<거래 제안 만들기@>@;
-@<제안에 응답하는 수@>@;
-@<받은 콩 단계의 수@>@;
-@<결투 단계의 수@>@;
-@<값어치 재기@>@;
-@<전략 정책@>@;
-@<작은 도우미들@>@;
-@<대전장@>@;
+@<정책 인터페이스@>
+@<무작위 정책@>
+@<그리디 정책@>
+@<밭 고르기와 거두기 도우미@>
+@<심기 단계의 수@>
+@<거래 단계의 수@>
+@<거래 제안 만들기@>
+@<제안에 응답하는 수@>
+@<받은 콩 단계의 수@>
+@<결투 단계의 수@>
+@<값어치 재기@>
+@<전략 정책@>
+@<작은 도우미들@>
+@<대전장@>
 
 @* 정책.
 정책은 뷰 하나를 받아 수 하나를 내는 함수다. 인터페이스로 두어, 대전장이
@@ -185,9 +185,9 @@ func bestHarvest(v bz.View) (bz.Action, bool) {
 @<심기 단계의 수@>=
 func plantMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
-	@<익은 밭이 있으면 거둔다@>@;
-	@<코인이 남으면 세 번째 밭을 산다@>@;
-	@<맨 앞 카드를 심거나, 자리를 비운다@>@;
+	@<익은 밭이 있으면 거둔다@>
+	@<코인이 남으면 세 번째 밭을 산다@>
+	@<맨 앞 카드를 심거나, 자리를 비운다@>
 	return endOr(v)
 }
 
@@ -248,11 +248,11 @@ if len(me.Hand) > 0 {
 @<거래 단계의 수@>=
 func (g *Greedy) tradeMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
-	@<익은 밭이 있으면 거둔다@>@;
-	@<내 밭과 맞는 공개 카드를 집는다@>@;
-	@<공개 카드를 빈 밭에 놓는다@>@;
-	@<예산이 남으면 필요 없는 카드를 넘긴다@>@;
-	@<자리가 없으면 밭을 거두어 비운다@>@;
+	@<익은 밭이 있으면 거둔다@>
+	@<내 밭과 맞는 공개 카드를 집는다@>
+	@<공개 카드를 빈 밭에 놓는다@>
+	@<예산이 남으면 필요 없는 카드를 넘긴다@>
+	@<자리가 없으면 밭을 거두어 비운다@>
 	return endOr(v)
 }
 
@@ -315,7 +315,7 @@ func proposeTrade(v bz.View) (bz.Action, bool) {
 		if o < 0 {
 			continue // 아무도 안 기르는 콩은 넘길 데가 없다
 		}
-		@<상대 |o|에게 |b|를 넘기는 제안을 만든다@>@;
+		@<상대 |o|에게 |b|를 넘기는 제안을 만든다@>
 	}
 	return bz.Action{}, false
 }
@@ -411,7 +411,7 @@ func countMatching(me bz.PlayerView, bs []bz.Bean) int {
 @<받은 콩 단계의 수@>=
 func giftMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
-	@<익은 밭이 있으면 거둔다@>@;
+	@<익은 밭이 있으면 거둔다@>
 	if len(me.Acquired) > 0 {
 		b := me.Acquired[0]
 		if f, ok := bestField(me, b); ok {
@@ -441,10 +441,10 @@ func giftMove(v bz.View) bz.Action {
 @<결투 단계의 수@>=
 func offerMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
-	@<익은 밭이 있으면 거둔다@>@;
-	@<내 밭과 맞는 공개 카드를 집는다@>@;
-	@<공개 카드를 빈 밭에 놓는다@>@;
-	@<남는 콩은 버린다@>@;
+	@<익은 밭이 있으면 거둔다@>
+	@<내 밭과 맞는 공개 카드를 집는다@>
+	@<공개 카드를 빈 밭에 놓는다@>
+	@<남는 콩은 버린다@>
 	return v.Legal[0]
 }
 
@@ -463,8 +463,8 @@ if a, ok := pick(v.Legal, func(a bz.Action) bool {
 @<결투 단계의 수@>=
 func duelDrawMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
-	@<익은 밭이 있으면 거둔다@>@;
-	@<내 밭과 맞는 공개 카드를 집는다@>@;
+	@<익은 밭이 있으면 거둔다@>
+	@<내 밭과 맞는 공개 카드를 집는다@>
 	return endOr(v)
 }
 
@@ -592,16 +592,16 @@ func (g *Strategist) Act(v bz.View, rng *rand.Rand) bz.Action {
 @<전략 정책@>=
 func (g *Strategist) tradeMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
-	@<익은 밭이 있으면 거둔다@>@;
-	@<내 밭과 맞는 공개 카드를 집는다@>@;
-	@<공개 카드를 빈 밭에 놓는다@>@;
+	@<익은 밭이 있으면 거둔다@>
+	@<내 밭과 맞는 공개 카드를 집는다@>
+	@<공개 카드를 빈 밭에 놓는다@>
 	if g.budget > 0 {
 		if a, ok := planTrade(v); ok {
 			g.budget--
 			return a
 		}
 	}
-	@<자리가 없으면 밭을 거두어 비운다@>@;
+	@<자리가 없으면 밭을 거두어 비운다@>
 	return endOr(v)
 }
 
@@ -631,7 +631,7 @@ func planTrade(v bz.View) (bz.Action, bool) {
 			continue // 내가 기르는 콩이면 넘기지 않고 내가 집는다
 		}
 		for o := range v.Players {
-			@<상대 |o|에게 |b|를 넘길 때의 우위를 잰다@>@;
+			@<상대 |o|에게 |b|를 넘길 때의 우위를 잰다@>
 		}
 	}
 	return best, ok
@@ -825,7 +825,7 @@ func Play(ps []Policy, seed uint64) ([]int, error) {
 			return nil, fmt.Errorf("봇 %d의 수 적용 실패(씨앗 %d): %w", actor, seed, err)
 		}
 	}
-	@<판이 끝나지 않았으면 실패로 알린다@>@;
+	@<판이 끝나지 않았으면 실패로 알린다@>
 	return s.Scores(), nil
 }
 
@@ -849,12 +849,12 @@ package ai
 
 import "testing"
 
-@<자리 승패 도우미@>@;
-@<그리디 대 랜덤 시험@>@;
-@<여러 명 대전 시험@>@;
-@<거래가 점수를 올리는지 시험@>@;
-@<거래 봇 대 비거래 봇 시험@>@;
-@<전략 봇 시험@>@;
+@<자리 승패 도우미@>
+@<그리디 대 랜덤 시험@>
+@<여러 명 대전 시험@>
+@<거래가 점수를 올리는지 시험@>
+@<거래 봇 대 비거래 봇 시험@>
+@<전략 봇 시험@>
 
 @ 점수 목록에서 어느 자리가 홀로 최고점인지 본다. 공동 최고점은 무승부라
 승리로 세지 않는다.
@@ -1006,9 +1006,9 @@ func TestTradingVsCautious(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		@<거래 봇의 승패와 점수를 센다@>@;
+		@<거래 봇의 승패와 점수를 센다@>
 	}
-	@<거래가 점수는 올리되 승률은 못 올림을 확인한다@>@;
+	@<거래가 점수는 올리되 승률은 못 올림을 확인한다@>
 }
 
 @ @<거래 봇의 승패와 점수를 센다@>=
@@ -1073,7 +1073,7 @@ func oddOneOut(t *testing.T, n, N int, mk func() Policy) (float64, float64, floa
 		if err != nil {
 			t.Fatal(err)
 		}
-		@<이 판의 승패와 점수를 센다@>@;
+		@<이 판의 승패와 점수를 센다@>
 	}
 	return float64(wins) / float64(N), float64(mine) / float64(N),
 		float64(theirs) / float64(N*(n-1))

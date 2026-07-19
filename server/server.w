@@ -61,12 +61,12 @@ import (
 	"github.com/sjnam/bohnanza/ai"
 )
 
-@<게임 방과 구독자@>@;
-@<수를 적용하고 알리기@>@;
-@<게임 관리소@>@;
-@<\.{HTTP} 손잡이@>@;
-@<채팅@>@;
-@<문 열기@>@;
+@<게임 방과 구독자@>
+@<수를 적용하고 알리기@>
+@<게임 관리소@>
+@<\.{HTTP} 손잡이@>
+@<채팅@>
+@<문 열기@>
 
 @* 게임 방과 구독자.
 게임 방 |Game|은 엔진 상태 하나와, 그 판을 지켜보는 구독자들의 목록을 쥔다.
@@ -364,7 +364,7 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	for p := range g.names {
 		g.names[p] = fmt.Sprintf("%d번", p) // 사람은 참가 때 이름으로 바뀐다
 	}
-	@<봇을 높은 자리에 앉힌다@>@;
+	@<봇을 높은 자리에 앉힌다@>
 	h.games[code] = g
 	return code, nil
 }
@@ -468,7 +468,7 @@ func (h *Hub) reap(now time.Time) {
 		g.mu.Lock()
 		if len(g.subs) == 0 && now.Sub(g.lastSeen) > roomTTL {
 			delete(h.games, code)
-			@<이 방을 가리키는 세션을 지운다@>@;
+			@<이 방을 가리키는 세션을 지운다@>
 		}
 		g.mu.Unlock()
 	}
@@ -668,7 +668,7 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "스트리밍을 지원하지 않음", http.StatusInternalServerError)
 		return
 	}
-	@<SSE 헤더를 세우고 갱신을 흘려보낸다@>@;
+	@<SSE 헤더를 세우고 갱신을 흘려보낸다@>
 }
 
 @ SSE 규약대로 \.{text/event-stream} 헤더를 세우고, 구독자로 등록한다. 그다음
@@ -765,7 +765,7 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "채팅 JSON을 읽을 수 없음", http.StatusBadRequest)
 		return
 	}
-	@<채팅 글을 다듬어 방에 알린다@>@;
+	@<채팅 글을 다듬어 방에 알린다@>
 }
 
 @ 앞뒤 공백을 떼고, 빈 글은 조용히 흘린다. 너무 길면 300글자로 자른다.
@@ -825,8 +825,8 @@ import (
 	bz "github.com/sjnam/bohnanza/engine"
 )
 
-@<봇 고루틴 경쟁 시험@>@;
-@<관전자 시험@>@;
+@<봇 고루틴 경쟁 시험@>
+@<관전자 시험@>
 
 @ 3인 방에 봇 둘을 앉히고 사람 자리의 턴을 끝까지 두어 봇 차례를 연다. 그
 다음부터가 본론이다.
@@ -844,8 +844,8 @@ func TestBotGoroutineRace(t *testing.T) {
 	if g == nil {
 		t.Fatal("방이 없음")
 	}
-	@<사람 턴을 두어 봇 차례를 연다@>@;
-	@<봇이 두는 동안 방을 두드린다@>@;
+	@<사람 턴을 두어 봇 차례를 연다@>
+	@<봇이 두는 동안 방을 두드린다@>
 }
 
 @ 사람 자리의 수는 아무거나 좋지만, 단계를 끝내는 수를 우선해 턴을 빨리
@@ -926,8 +926,8 @@ func TestSpectatorTakesNoSeat(t *testing.T) {
 	if _, _, err := h.join(code, "철수"); err != nil {
 		t.Fatal(err) // 남은 사람 자리 하나를 채운다
 	}
-	@<가득 찬 방에도 관전은 붙는지 본다@>@;
-	@<관전자 뷰에 손패가 없는지 본다@>@;
+	@<가득 찬 방에도 관전은 붙는지 본다@>
+	@<관전자 뷰에 손패가 없는지 본다@>
 }
 
 @ 자리가 다 찼으니 참가는 실패해야 하고, 관전은 그래도 되어야 한다. 관전이

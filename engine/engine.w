@@ -51,18 +51,18 @@ import (
 	"strings"
 )
 
-@<콩과 콩미터@>@;
-@<변형 규칙@>@;
-@<게임 상태@>@;
-@<덱 다루기@>@;
-@<밭에 심고 거두기@>@;
-@<턴 넘기기@>@;
-@<액션@>@;
-@<합법수 열거@>@;
-@<이벤트@>@;
-@<액션 적용@>@;
-@<점수와 불변식@>@;
-@<플레이어 뷰@>@;
+@<콩과 콩미터@>
+@<변형 규칙@>
+@<게임 상태@>
+@<덱 다루기@>
+@<밭에 심고 거두기@>
+@<턴 넘기기@>
+@<액션@>
+@<합법수 열거@>
+@<이벤트@>
+@<액션 적용@>
+@<점수와 불변식@>
+@<플레이어 뷰@>
 
 @* 콩과 콩미터.
 콩은 열한 종류다. 각 콩은 덱에 들어가는 장수가 다르고---흔한 콩일수록
@@ -316,8 +316,8 @@ func New(numPlayers int, seed uint64) (*State, error) {
 	}
 	s := &State{rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
 		Rules: variantFor(numPlayers)}
-	@<덱을 쌓고 섞는다@>@;
-	@<플레이어를 앉히고 손패를 돌린다@>@;
+	@<덱을 쌓고 섞는다@>
+	@<플레이어를 앉히고 손패를 돌린다@>
 	return s, nil
 }
 
@@ -775,7 +775,7 @@ func (s *State) proposeActions(player int) []Action {
 			continue
 		}
 		theirs := distinct(s.Players[to].Hand)
-		@<상대 |to|와의 제안을 편다@>@;
+		@<상대 |to|와의 제안을 편다@>
 	}
 	return acts
 }
@@ -919,7 +919,7 @@ type Event struct {
 @<이벤트@>=
 func (e Event) String() string {
 	switch e.Kind {
-	@<갈래마다 기본 문장을 짓는다@>@;
+	@<갈래마다 기본 문장을 짓는다@>
 	}
 	return string(e.Kind)
 }
@@ -1147,7 +1147,7 @@ func (s *State) beginDuelDraw() ([]Event, error) {
 		ev = append(ev, Event{Kind: Revealed,
 			Actor: NoActor, To: NoActor, Crop: c})
 	}
-	@<버림 더미 맨 위가 걸리는 동안 끌어올린다@>@;
+	@<버림 더미 맨 위가 걸리는 동안 끌어올린다@>
 	s.Stage = PhaseDuelDraw
 	return ev, nil
 }
@@ -1278,7 +1278,7 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 	if len(a.GiveHand)+len(a.GiveFaceUp)+len(a.GetHand) == 0 {
 		return nil, fmt.Errorf("보난자: 빈 거래는 제안할 수 없음")
 	}
-	@<제안한 카드가 제자리에 있는지 확인한다@>@;
+	@<제안한 카드가 제자리에 있는지 확인한다@>
 	s.Pending = &Proposal{From: s.Active, To: a.To,
 		GiveHand:   append([]Card{}, a.GiveHand...),
 		GiveFaceUp: append([]Card{}, a.GiveFaceUp...),
@@ -1311,7 +1311,7 @@ func (s *State) applyRespond(a Action) ([]Event, error) {
 		s.Pending = nil
 		return []Event{{Kind: TradeRejected, Actor: a.Actor, To: NoActor}}, nil
 	}
-	@<제안대로 카드를 옮긴다@>@;
+	@<제안대로 카드를 옮긴다@>
 }
 
 @ 수락 처리. 여기서 비로소 세 더미가 다 갖춰졌는지 확인한다---특히 상대가
@@ -1512,7 +1512,7 @@ func (s *State) View(player int) View {
 	for i, p := range s.Players {
 		v.Players = append(v.Players, s.playerView(i, p, player))
 	}
-	@<대기 제안과 점수를 붙인다@>@;
+	@<대기 제안과 점수를 붙인다@>
 	return v
 }
 
@@ -1587,16 +1587,16 @@ import (
 	"testing"
 )
 
-@<덱 구성 시험@>@;
-@<콩미터 시험@>@;
-@<양방향 거래 시험@>@;
-@<다장 거래 시험@>@;
-@<뷰 가림 시험@>@;
-@<수확 제한 시험@>@;
-@<변형 차림 시험@>@;
-@<보충 시험@>@;
-@<결투 시험@>@;
-@<무작위 완주 시험@>@;
+@<덱 구성 시험@>
+@<콩미터 시험@>
+@<양방향 거래 시험@>
+@<다장 거래 시험@>
+@<뷰 가림 시험@>
+@<수확 제한 시험@>
+@<변형 차림 시험@>
+@<보충 시험@>
+@<결투 시험@>
+@<무작위 완주 시험@>
 
 @ 덱은 정확히 154장이어야 하고, 콩미터 테이블의 장수 합도 154여야 한다.
 @<덱 구성 시험@>=
@@ -1661,7 +1661,7 @@ func TestBilateralTrade(t *testing.T) {
 	if _, err := s.Apply(Action{Kind: RespondTrade, Actor: 1, Accept: true}); err != nil {
 		t.Fatal(err)
 	}
-	@<교환 결과를 확인한다@>@;
+	@<교환 결과를 확인한다@>
 }
 
 @ 교환 뒤: 0번은 강낭콩을, 1번은 커피콩을 받은 콩으로 가지고, 각자 손패에서
@@ -1769,7 +1769,7 @@ func TestViewRedaction(t *testing.T) {
 	if v.DeckCount != len(s.Deck) {
 		t.Errorf("덱 장수가 틀림: %d", v.DeckCount)
 	}
-	@<JSON 왕복 뒤에도 가림이 유지되는지 본다@>@;
+	@<JSON 왕복 뒤에도 가림이 유지되는지 본다@>
 }
 
 @ JSON으로 부호화했다 복호화한 뒤에도 남의 손패는 비어 있어야 하고, 콩 도감은
@@ -1810,8 +1810,8 @@ func TestSpectatorSeesNoHands(t *testing.T) {
 		t.Fatal(err)
 	}
 	v := s.View(Spectator)
-	@<관전자 뷰에 손패도 합법수도 없는지 본다@>@;
-	@<관전자가 공개 정보는 다 보는지 본다@>@;
+	@<관전자 뷰에 손패도 합법수도 없는지 본다@>
+	@<관전자가 공개 정보는 다 보는지 본다@>
 }
 
 @ @<관전자 뷰에 손패도 합법수도 없는지 본다@>=
@@ -1893,7 +1893,7 @@ func TestVariantSetup(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		@<차림이 표대로인지 본다@>@;
+		@<차림이 표대로인지 본다@>
 	}
 }
 
@@ -1955,7 +1955,7 @@ func TestRefillByVariant(t *testing.T) {
 				i, before[i], len(p.Hand))
 		}
 	}
-	@<4인은 활성 플레이어만 세 장인지 본다@>@;
+	@<4인은 활성 플레이어만 세 장인지 본다@>
 }
 
 @ @<4인은 활성 플레이어만 세 장인지 본다@>=
@@ -1990,8 +1990,8 @@ func TestDuelTossHand(t *testing.T) {
 	if _, err := s.Apply(Action{Kind: PlantFront, Actor: 0, FieldNo: 0}); err != nil {
 		t.Fatal(err) // 한 장 심어야 버릴 수 있다
 	}
-	@<버리기 수가 손패 자리마다 나오는지 본다@>@;
-	@<한 장 버리고, 두 번째는 막히는지 본다@>@;
+	@<버리기 수가 손패 자리마다 나오는지 본다@>
+	@<한 장 버리고, 두 번째는 막히는지 본다@>
 }
 
 @ @<버리기 수가 손패 자리마다 나오는지 본다@>=
@@ -2039,8 +2039,8 @@ func TestDuelTurnFlow(t *testing.T) {
 	}
 	mustApply(t, s, Action{Kind: PlantFront, Actor: 0, FieldNo: 0})
 	mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
-	@<세 장이 뒤집혀 나누기 단계인지 본다@>@;
-	@<남긴 콩이 상대의 받은 제안이 되는지 본다@>@;
+	@<세 장이 뒤집혀 나누기 단계인지 본다@>
+	@<남긴 콩이 상대의 받은 제안이 되는지 본다@>
 }
 
 @ @<세 장이 뒤집혀 나누기 단계인지 본다@>=
@@ -2087,7 +2087,7 @@ func TestRandomPlaythrough(t *testing.T) {
 			t.Fatal(err)
 		}
 		rng := rand.New(rand.NewPCG(seed, 12345))
-		@<무작위로 한 판을 끝까지 둔다@>@;
+		@<무작위로 한 판을 끝까지 둔다@>
 	}
 }
 
