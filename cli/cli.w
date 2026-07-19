@@ -34,7 +34,7 @@ import (
 	"strings"
 	"time"
 
-	bz "github.com/sjnam/bohnanza"
+	bz "github.com/sjnam/bohnanza/engine"
 	"github.com/sjnam/bohnanza/bot"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	bz "github.com/sjnam/bohnanza"
+	bz "github.com/sjnam/bohnanza/engine"
 )
 
 //line server/server.w:834

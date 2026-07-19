@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	bz "github.com/sjnam/bohnanza"
 	"github.com/sjnam/bohnanza/bot"
+	bz "github.com/sjnam/bohnanza/engine"
 )
 
 var in = bufio.NewReader(os.Stdin)

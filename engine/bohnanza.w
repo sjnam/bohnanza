@@ -1,4 +1,4 @@
-@i types.w
+@i ../types.w
 
 \input kotexgweb
 
@@ -42,7 +42,7 @@ $$\vbox{\halign{\indent\bf#\hfil&\quad#\hfil\cr
 \.{bohnanza.go}와 시험 파일 \.{bohnanza\_test.go}가 함께 떨어진다. 아래
 조각들이 위에서 아래로 쌓여 엔진을 이룬다.
 @c
-package bohnanza
+package engine
 
 import (
 	"encoding/json"
@@ -1578,7 +1578,7 @@ func Catalog() []BeanInfoView {
 시험은 패키지 안에서 돌며 내부 함수까지 들여다본다. 무작위성은 재현
 가능하도록 씨앗을 고정한 |math/rand/v2|의 PCG를 쓴다.
 @(bohnanza_test.go@>=
-package bohnanza
+package engine
 
 import (
 	"bytes"

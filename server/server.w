@@ -57,7 +57,7 @@ import (
 	"sync"
 	"time"
 
-	bz "github.com/sjnam/bohnanza"
+	bz "github.com/sjnam/bohnanza/engine"
 	"github.com/sjnam/bohnanza/bot"
 )
 
@@ -822,7 +822,7 @@ import (
 	"testing"
 	"time"
 
-	bz "github.com/sjnam/bohnanza"
+	bz "github.com/sjnam/bohnanza/engine"
 )
 
 @<봇 고루틴 경쟁 시험@>@;

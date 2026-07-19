@@ -41,7 +41,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	bz "github.com/sjnam/bohnanza"
+	bz "github.com/sjnam/bohnanza/engine"
 )
 
 @<정책 인터페이스@>@;

@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	bz "github.com/sjnam/bohnanza"
 	"github.com/sjnam/bohnanza/bot"
+	bz "github.com/sjnam/bohnanza/engine"
 )
 
 //line server/server.w:77

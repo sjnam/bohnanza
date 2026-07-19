@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	bz "github.com/sjnam/bohnanza"
+	bz "github.com/sjnam/bohnanza/engine"
 )
 
 //line bot/bot.w:67

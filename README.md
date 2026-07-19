@@ -43,7 +43,7 @@ graph TD
 
 | 파일 | 내용 | tangle 산출 |
 | --- | --- | --- |
-| `bohnanza.w` | 순수 게임 엔진 | `bohnanza.go`, `bohnanza_test.go` |
+| `engine/bohnanza.w` | 순수 게임 엔진 | `engine/bohnanza.go`, `engine/bohnanza_test.go` |
 | `cli/cli.w` | 핫시트·봇 대전 터미널 | `cli/cli.go` |
 | `bot/bot.w` | 봇 정책과 대전장 | `bot/bot.go`, `bot/bot_test.go` |
 | `server/server.w` | 게임 서버 | `server/server.go` |

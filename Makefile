@@ -17,10 +17,10 @@ GWEAVE  ?= gweave
 
 all: tangle doc
 
-tangle: bohnanza.go cli/cli.go server/server.go bot/bot.go
+tangle: engine/bohnanza.go cli/cli.go server/server.go bot/bot.go
 
-bohnanza.go: bohnanza.w
-	$(GTANGLE) bohnanza.w
+engine/bohnanza.go: engine/bohnanza.w
+	$(GTANGLE) engine/bohnanza.w
 
 cli/cli.go: cli/cli.w
 	$(GTANGLE) cli/cli.w
@@ -31,10 +31,10 @@ server/server.go: server/server.w
 bot/bot.go: bot/bot.w
 	$(GTANGLE) bot/bot.w
 
-doc: bohnanza.pdf cli/cli.pdf server/server.pdf bot/bot.pdf
+doc: engine/bohnanza.pdf cli/cli.pdf server/server.pdf bot/bot.pdf
 
-bohnanza.pdf: bohnanza.w
-	$(GWEAVE) bohnanza.w && luatex bohnanza.tex </dev/null
+engine/bohnanza.pdf: engine/bohnanza.w
+	cd engine && $(GWEAVE) bohnanza.w && luatex bohnanza.tex </dev/null
 
 cli/cli.pdf: cli/cli.w
 	cd cli && $(GWEAVE) cli.w && luatex cli.tex </dev/null
@@ -58,7 +58,7 @@ server: tangle
 	go run ./server $(ARGS)
 
 clean:
-	rm -f bohnanza.tex bohnanza.log bohnanza.toc bohnanza.pdf
+	rm -f engine/bohnanza.tex engine/bohnanza.log engine/bohnanza.toc engine/bohnanza.pdf
 	rm -f cli/cli.tex cli/cli.log cli/cli.toc cli/cli.pdf
 	rm -f server/server.tex server/server.log server/server.toc server/server.pdf
 	rm -f bot/bot.tex bot/bot.log bot/bot.toc bot/bot.pdf
