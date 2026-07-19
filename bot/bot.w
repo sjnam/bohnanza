@@ -479,13 +479,17 @@ func holds(pool, want []bz.Bean) bool {
 엔진에 적용한다---서버가 하는 일과 똑같되, 사람 대신 정책이 고를 뿐이다.
 게임이 막히지 않도록 수에 상한을 둔다.
 @<대전장@>=
+// 한 판에 드는 수의 상한. 2인부터 4인까지 실측 최대가 800수 남짓이니 넉넉하다.
+const maxSteps = 100000
+
 func Play(ps []Policy, seed uint64) ([]int, error) {
 	s, err := bz.New(len(ps), seed)
 	if err != nil {
 		return nil, err
 	}
 	rng := rand.New(rand.NewPCG(seed, 0x1234567))
-	for step := 0; step < 100000 && !s.Over(); step++ {
+	step := 0
+	for ; step < maxSteps && !s.Over(); step++ {
 		actor := s.ToAct()
 		if actor < 0 {
 			break
@@ -495,7 +499,18 @@ func Play(ps []Policy, seed uint64) ([]int, error) {
 			return nil, fmt.Errorf("봇 %d의 수 적용 실패(씨앗 %d): %w", actor, seed, err)
 		}
 	}
+	@<판이 끝나지 않았으면 실패로 알린다@>@;
 	return s.Scores(), nil
+}
+
+@ 상한에 걸리거나 나설 사람이 없어 루프를 빠져나오면 판은 끝나지 않은 것이다.
+그런 판의 점수를 성한 것인 양 돌려주면, 대전장이 내야 할 숫자가 조용히
+오염된다---막힌 봇을 시끄럽게 신고하는 편이 낫다. 대전장의 값어치는 믿을 만한
+숫자에 있으므로, 여기서만은 조용한 실패를 허락하지 않는다.
+@<판이 끝나지 않았으면 실패로 알린다@>=
+if !s.Over() {
+	return nil, fmt.Errorf("판이 %d수에서 끝나지 않음(씨앗 %d, 단계 %v)",
+		step, seed, s.Stage)
 }
 
 @* 시험.

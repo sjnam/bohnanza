@@ -1,9 +1,9 @@
-//line bot/bot.w:507
+//line bot.w:522
 package bot
 
 import "testing"
 
-//line bot/bot.w:520
+//line bot.w:535
 func soleWinner(scores []int, seat int) bool {
 	for i, sc := range scores {
 		if i != seat && sc >= scores[seat] {
@@ -13,7 +13,7 @@ func soleWinner(scores []int, seat int) bool {
 	return true
 }
 
-//line bot/bot.w:532
+//line bot.w:547
 func TestGreedyBeatsRandom(t *testing.T) {
 	const N = 300
 	gWins, rWins, ties := 0, 0, 0
@@ -48,7 +48,7 @@ func TestGreedyBeatsRandom(t *testing.T) {
 	}
 }
 
-//line bot/bot.w:569
+//line bot.w:584
 func TestArenaMultiplayer(t *testing.T) {
 	const N = 300
 	for _, n := range []int{3, 4} {
@@ -77,7 +77,7 @@ func TestArenaMultiplayer(t *testing.T) {
 	}
 }
 
-//line bot/bot.w:600
+//line bot.w:615
 func TestTradingRaisesScores(t *testing.T) {
 	for _, n := range []int{2, 3, 4} {
 		cautious := avgScore(t, n, false)
@@ -91,7 +91,7 @@ func TestTradingRaisesScores(t *testing.T) {
 	}
 }
 
-//line bot/bot.w:615
+//line bot.w:630
 func avgScore(t *testing.T, n int, trade bool) float64 {
 	const N = 200
 	total := 0
@@ -115,7 +115,7 @@ func avgScore(t *testing.T, n int, trade bool) float64 {
 	return float64(total) / float64(N*n)
 }
 
-//line bot/bot.w:642
+//line bot.w:657
 func TestTradingVsCautious(t *testing.T) {
 	const N = 300
 	tWins, cWins, ties := 0, 0, 0
