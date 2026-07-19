@@ -25,12 +25,18 @@ $$\vbox{\halign{\indent\bf#\hfil&\quad#\hfil\cr
 거래&    덱에서 2장을 뒤집어 공개하고, 활성 플레이어가 나눠 준다\cr
 받은콩&  거래로 받은 콩을 각자 즉시 심는다\cr
 보충&    덱에서 3장 뽑아 손패 뒤에 붙이고 다음 사람에게 넘긴다\cr}}$$
-게임은 덱이 세 번째로 바닥나는 순간 끝난다. 그때 각자 남은 밭을 모두
+게임은 덱이 바닥나는 순간 끝난다. 그때 각자 남은 밭을 모두
 거두어 코인을 세고, 코인이 가장 많은 사람이 이긴다. 거래는 활성 플레이어가
 상대에게 교환을 내밀면 상대가 수락하거나 거절하는 양방향 방식이고, 콩미터
 수치와 카드 장수는 규칙서(영어\slash Rio Grande 판, 열한 종 154장)를 그대로
-따른다. 한 장짜리 밭 수확 제한도 규칙대로 건다. 다만 $2\sim3$인 공식 변형 규칙은
-쓰지 않고, 기본 규칙을 $2\sim4$인에 고르게 적용한다.
+따른다. 한 장짜리 밭 수확 제한도 규칙대로 건다.
+
+@ 인원에 따라 규칙이 갈린다. 4인은 위의 기본 규칙 그대로지만, $2\sim3$인은
+규칙서가 따로 정한 {\it 공식 변형\/}을 쓴다. 3인은 카카오콩을 빼고 밭 3칸으로
+시작하며 보충을 전원이 한 장씩 돌고, 2인은 아예 {\it 콩 결투\/}라는 다른 턴
+구조로 논다---거래가 없고, 대신 뽑은 콩 가운데 원치 않는 것을 상대에게 넘긴다.
+이 갈래를 |Variant| 하나에 값으로 모아 두었으므로, 규칙의 ``인원에 따라 무엇이
+다른가''는 한 곳에서만 읽으면 된다.
 
 @ 프로그램은 \GO/ 패키지 |bohnanza|로 나온다. \.{gtangle}을 실행하면 주 출력
 \.{bohnanza.go}와 시험 파일 \.{bohnanza\_test.go}가 함께 떨어진다. 아래
@@ -46,6 +52,7 @@ import (
 )
 
 @<콩과 콩미터@>@;
+@<변형 규칙@>@;
 @<게임 상태@>@;
 @<덱 다루기@>@;
 @<밭에 심고 거두기@>@;
@@ -69,6 +76,11 @@ import (
 둔다. 콩미터 수치와 장수는 규칙서(영어\slash Rio Grande 판)와 대조해 확정한
 값이다---구조가 데이터에 의존하지 않으므로, 다른 판본을 따르려면 이 표만
 고치면 된다.
+
+한 가지 판본 차이를 밝혀 둔다. 왁스콩의 콩미터는 구판이 $4,7,9,11$이고 2016년
+개정판이 $4,8,11,13$인데, 여기서는 개정판을 따랐다. 인원별 변형 규칙을 개정판
+규칙서에서 가져왔으니 콩미터도 같은 판본으로 맞추는 편이 앞뒤가 맞기 때문이다.
+나머지 열 종류는 두 판본이 같다.
 @s Bean int
 @<콩과 콩미터@>=
 type Bean int
@@ -101,7 +113,7 @@ type BeanInfo struct {
 
 var beanTable = [NumBeans]BeanInfo{
 	Coffee:    {"커피콩", 24, [4]int{4, 7, 10, 12}},
-	Wax:       {"왁스콩", 22, [4]int{4, 7, 9, 11}},
+	Wax:       {"왁스콩", 22, [4]int{4, 8, 11, 13}},
 	Blue:      {"파랑콩", 20, [4]int{4, 6, 8, 10}},
 	Chili:     {"고추콩", 18, [4]int{3, 6, 8, 9}},
 	Stink:     {"악취콩", 16, [4]int{3, 5, 7, 8}},
@@ -131,10 +143,68 @@ func (b Bean) Coins(n int) int {
 	return c
 }
 
+@* 변형 규칙.
+인원에 따라 달라지는 것들을 |Variant| 한 값에 모은다. 규칙이 코드 곳곳에
+흩어져 |if| 문으로 갈라지면 어느 판본을 노는 중인지 알 수 없게 되므로,
+차이를 데이터로 뽑아 두고 코드는 그 값을 읽기만 하게 했다.
+
+@ 여섯 가지가 갈린다. 덱에서 빼는 콩, 시작 밭 칸수, 세 번째 밭을 살 수
+있는지, 덱이 몇 번째로 바닥날 때 끝나는지, 보충 단계에서 몇 장을 뽑는지,
+그리고 그 보충을 활성 플레이어 혼자 하는지 전원이 한 장씩 도는지다. 마지막
+|Duel|은 2인 전용 턴 구조를 켜는 스위치다.
+@s Variant int
+@<변형 규칙@>=
+type Variant struct {
+	Drop       []Bean // 이 인원에서는 덱에 넣지 않는 콩
+	StartField int    // 각자 시작할 때 받는 밭 칸수
+	ExtraField bool   // 세 번째 밭을 살 수 있는가
+	LastPass   int    // 덱이 이만큼 바닥나면 게임이 끝난다
+	Refill     int    // 보충 단계에서 뽑는 장수
+	RoundRobin bool   // 보충을 전원이 한 장씩 도는가
+	Duel       bool   // 2인 콩 결투 규칙인가
+}
+
+@ 인원별 표다. 4인은 기본 규칙이고, 3인과 2인은 규칙서의 공식 변형이다.
+2인 결투는 3인 변형을 물려받은 뒤 정원콩까지 더 빼고, 덱이 {\it 처음\/}
+바닥날 때 끝나며, 보충이 두 장이다.
+@<변형 규칙@>=
+func variantFor(n int) Variant {
+	switch n {
+	case 2:
+		return Variant{Drop: []Bean{Garden, Cocoa}, StartField: 3,
+			LastPass: 1, Refill: 2, Duel: true}
+	case 3:
+		return Variant{Drop: []Bean{Cocoa}, StartField: 3,
+			LastPass: 2, Refill: 1, RoundRobin: true}
+	}
+	return Variant{StartField: 2, ExtraField: true, LastPass: 3, Refill: 3}
+}
+
+func (v Variant) drops(b Bean) bool {
+	for _, d := range v.Drop {
+		if d == b {
+			return true
+		}
+	}
+	return false
+}
+
+@ 표의 근거를 밝혀 둔다. 개정판 규칙서는 카카오\slash 왁스\slash 커피를 더한
+열한 종 덱을 ``세 가지 새 콩'' 변형으로 두고, 그 변형에서 3인은 카카오콩을 빼고
+밭 3칸으로 시작하며 보충을 전원이 시계방향으로 한 장씩 하고, 덱이 두 번째로
+바닥날 때 끝난다고 적는다. 2인 콩 결투는 이 3인 변형을 그대로 물려받되 정원콩과
+카카오콩을 빼고, 자기 턴에만 밭을 팔 수 있으며, 덱이 처음 바닥날 때 끝난다.
+
+여기서 한 가지는 일부러 규칙서와 다르게 두었다. 개정판은 저 보충 규칙을 3인만이
+아니라 변형 전체($3\sim7$인)에 걸겠다고 적지만, 이 엔진의 4인은 예전부터 활성
+플레이어가 세 장을 뽑는 기본 규칙으로 돌아왔고 봇의 승률 기준도 거기 맞춰 두었다.
+$2\sim3$인 변형을 {\it 더하는\/} 것이 목적이므로 4인은 건드리지 않았다. 4인까지
+개정판에 맞추고 싶다면 |variantFor|의 마지막 줄만 고치면 된다.
+
 @* 게임 상태.
 게임의 모든 것은 |State| 하나에 담긴다. 플레이어들, 덱과 버림 더미, 거래에서
-뒤집은 공개 카드, 게임에서 빠진 카드(3번째 밭 값), 그리고 지금이 누구 차례의
-어느 단계인지다. 난수는 |State| 안에 씨앗으로 심어 두어, 같은 씨앗과 같은
+뒤집은 공개 카드, 게임에서 빠진 카드(밭 값과 변형에서 뺀 콩), 그리고 지금이
+누구 차례의 어느 단계인지다. 난수는 |State| 안에 씨앗으로 심어 두어, 같은 씨앗과 같은
 수순은 언제나 같은 게임이 되게 한다---재현 가능한 시험의 뿌리다.
 
 @ 플레이어는 손패, 밭, 거래로 받아 아직 못 심은 콩(|Acquired|), 그리고
@@ -161,7 +231,9 @@ type Player struct {
 func (p *Player) Coins() int { return len(p.Treasury) }
 
 @ 턴의 단계는 |Phase|로 나타낸다. 심기\slash 거래\slash 받은 콩 심기 세
-단계가 사람의 선택을 받고, 보충(3장 뽑기)은 자동이라 단계로 두지 않는다.
+단계가 사람의 선택을 받고, 보충은 자동이라 단계로 두지 않는다. 2인 결투는
+거래가 없는 대신 |PhaseOffer|(상대가 남긴 콩을 심거나 버리기)와
+|PhaseDuelDraw|(뽑은 콩을 심고 나머지를 상대에게 남기기) 두 단계를 더 쓴다.
 게임이 끝나면 |GameOver|로 굳는다.
 @s Phase int
 @<게임 상태@>=
@@ -171,6 +243,8 @@ const (
 	PhasePlant Phase = iota // 손패에서 심기
 	PhaseTrade              // 공개 카드 나누기
 	PhaseHarvestGifts       // 받은 콩 심기
+	PhaseOffer              // 결투: 상대가 남긴 콩 처리
+	PhaseDuelDraw           // 결투: 뽑은 콩을 심고 남기기
 	GameOver
 )
 
@@ -184,25 +258,33 @@ func (p Phase) String() string {
 		return "거래"
 	case PhaseHarvestGifts:
 		return "받은 콩 심기"
+	case PhaseOffer:
+		return "받은 제안"
+	case PhaseDuelDraw:
+		return "뽑아 나누기"
 	}
 	return "종료"
 }
 
 @ 이제 |State| 본체다. |Active|는 현재 턴의 플레이어, |PlantCount|는 이번
-심기 단계에서 심은 장수(0,1,2), |Exhaust|는 덱이 바닥난 횟수다. |rng|는
-직렬화하지 않는 내부 난수원이라 소문자로 감춘다.
+심기 단계에서 심은 장수(0,1,2), |Exhaust|는 덱이 바닥난 횟수다. |Rules|는
+이 판이 따르는 인원별 변형이고, |HandTossed|는 결투에서 이번 턴에 손패를 한 장
+버렸는지를 적는다(턴마다 한 장까지다). |rng|는 직렬화하지 않는 내부
+난수원이라 소문자로 감춘다.
 @s State int
 @<게임 상태@>=
 type State struct {
 	Players    []*Player
 	Deck       []Card
 	Discard    []Card
-	FaceUp     []Card // 거래에서 뒤집은 공개 카드
-	Removed    []Card // 게임에서 빠진 카드(밭 값)
+	FaceUp     []Card // 뒤집은 공개 카드(결투에서는 상대에게 넘길 제안)
+	Removed    []Card // 게임에서 빠진 카드(밭 값과 변형에서 뺀 콩)
 	Active     int
 	Stage      Phase // 지금 이 턴이 어느 단계인지
 	PlantCount int
 	Exhaust    int
+	HandTossed bool      // 결투: 이번 턴에 손패를 버렸는가
+	Rules      Variant   // 이 판이 따르는 인원별 변형
 	Pending    *Proposal // 응답을 기다리는 거래 제안(없으면 |nil|)
 
 	rng *rand.Rand
@@ -221,9 +303,10 @@ type Proposal struct {
 	GetHand    []Card // To가 손패에서 내주는 콩
 }
 
-@ |New|는 인원수와 씨앗을 받아 새 게임을 차린다. 154장짜리 덱을 콩미터
-테이블대로 쌓아 섞고, 각 플레이어에게 밭 2칸을 주고 손패를 돌아가며 다섯 장씩
-나눈다. 인원은 이 간단판에서 $2\sim4$명만 받는다.
+@ |New|는 인원수와 씨앗을 받아 새 게임을 차린다. 먼저 인원에 맞는 변형을
+고르고, 콩미터 테이블대로 덱을 쌓아 섞고, 각 플레이어에게 변형이 정한 만큼의
+밭을 주고 손패를 돌아가며 다섯 장씩 나눈다. 인원은 이 간단판에서 $2\sim4$명만
+받는다.
 @<게임 상태@>=
 const StartingHand = 5
 
@@ -231,17 +314,24 @@ func New(numPlayers int, seed uint64) (*State, error) {
 	if numPlayers < 2 || numPlayers > 4 {
 		return nil, fmt.Errorf("보난자: 인원은 2~4명이어야 한다 (%d명 요청)", numPlayers)
 	}
-	s := &State{rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
+	s := &State{rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
+		Rules: variantFor(numPlayers)}
 	@<덱을 쌓고 섞는다@>@;
 	@<플레이어를 앉히고 손패를 돌린다@>@;
 	return s, nil
 }
 
-@ 콩미터 테이블을 그대로 펼쳐 덱을 만든 뒤 한 번 섞는다.
+@ 콩미터 테이블을 그대로 펼쳐 덱을 만든 뒤 한 번 섞는다. 변형이 빼라고 한
+콩은 덱 대신 |Removed|로 보낸다---{\it 상자에 도로 넣는\/} 카드도 어딘가에는
+있어야 카드 보존 불변식이 154장 그대로 성립하기 때문이다.
 @<덱을 쌓고 섞는다@>=
 for b := Bean(0); b < NumBeans; b++ {
+	pile := &s.Deck
+	if s.Rules.drops(b) {
+		pile = &s.Removed
+	}
 	for i := 0; i < beanTable[b].Count; i++ {
-		s.Deck = append(s.Deck, b)
+		*pile = append(*pile, b)
 	}
 }
 s.rng.Shuffle(len(s.Deck), func(i, j int) {
@@ -251,7 +341,7 @@ s.rng.Shuffle(len(s.Deck), func(i, j int) {
 @ 손패는 카드 게임의 관례대로 한 장씩 돌아가며 나눈다.
 @<플레이어를 앉히고 손패를 돌린다@>=
 for i := 0; i < numPlayers; i++ {
-	s.Players = append(s.Players, &Player{Fields: make([]Field, 2)})
+	s.Players = append(s.Players, &Player{Fields: make([]Field, s.Rules.StartField)})
 }
 for k := 0; k < StartingHand; k++ {
 	for i := 0; i < numPlayers; i++ {
@@ -262,13 +352,14 @@ for k := 0; k < StartingHand; k++ {
 
 @* 덱 다루기.
 덱에서 카드를 뽑는 |draw|는 게임의 시계다. 덱이 비면 버림 더미를 섞어 새
-덱으로 삼되, 이렇게 바닥나는 것을 |Exhaust|로 센다. 세 번째로 바닥나는
-순간이 게임의 끝이므로, 그때는 카드를 내주지 않고 실패를 알린다.
+덱으로 삼되, 이렇게 바닥나는 것을 |Exhaust|로 센다. 변형이 정한 |LastPass|
+번째로 바닥나는 순간이 게임의 끝이므로(4인은 세 번째, 3인은 두 번째, 2인
+결투는 첫 번째다), 그때는 카드를 내주지 않고 실패를 알린다.
 @<덱 다루기@>=
 func (s *State) draw() (Card, bool) {
 	if len(s.Deck) == 0 {
 		s.Exhaust++
-		if s.Exhaust >= 3 || len(s.Discard) == 0 {
+		if s.Exhaust >= s.Rules.LastPass || len(s.Discard) == 0 {
 			return 0, false
 		}
 		s.Deck, s.Discard = s.Discard, nil
@@ -361,32 +452,63 @@ func (s *State) harvest(p *Player, field int) (int, error) {
 }
 
 @* 턴 넘기기.
-한 턴의 마지막(보충 단계)은 자동이다. 현재 플레이어가 덱에서 세 장을 뽑아
-손패 {\it 뒤\/}에 순서대로 붙이고, 차례를 다음 사람에게 넘기고, 단계를
-다시 심기로 되돌린다. 뽑다가 덱이 바닥나면 그 자리에서 게임이 끝난다.
+한 턴의 마지막(보충 단계)은 자동이다. 덱에서 카드를 뽑아 손패 {\it 뒤\/}에
+순서대로 붙이고, 차례를 다음 사람에게 넘기고, 단계를 그 턴의 첫 단계로
+되돌린다. 뽑다가 덱이 바닥나면 그 자리에서 게임이 끝난다.
 @<턴 넘기기@>=
 func (s *State) endTurn() {
-	p := s.Players[s.Active]
-	for i := 0; i < 3; i++ {
-		c, ok := s.draw()
-		if !s.endIfEmpty(ok) {
-			return
-		}
-		p.Hand = append(p.Hand, c)
+	if !s.refill() {
+		return
 	}
 	s.Active = (s.Active + 1) % len(s.Players)
-	s.Stage = PhasePlant
 	s.PlantCount = 0
+	s.HandTossed = false
+	s.Stage = s.openingPhase()
 }
 
-@ 어느 플레이어가 지금 수를 두어야 하는지는 단계가 정한다. 심기와 거래는
-활성 플레이어의 몫이고, 받은 콩 심기 단계에서는 아직 못 심은 콩을 쥔
-플레이어가 낮은 번호부터 차례로 나선다. 아무도 없거나 게임이 끝났으면
-$-1$을 돌려준다.
+@ 보충은 변형에 따라 두 모양이다. 기본(4인)과 결투(2인)는 활성 플레이어
+혼자 |Refill|장을 뽑고, 3인 변형은 전원이 활성 플레이어부터 시계방향으로
+한 장씩 뽑는다. 두 모양을 한 겹의 이중 반복으로 적었다---바깥은 몇 바퀴,
+안쪽은 누가 뽑는가이고, 시계방향이 아니면 첫 사람에서 곧장 빠져나온다.
+@<턴 넘기기@>=
+func (s *State) refill() bool {
+	n := len(s.Players)
+	for k := 0; k < s.Rules.Refill; k++ {
+		for i := 0; i < n; i++ {
+			c, ok := s.draw()
+			if !s.endIfEmpty(ok) {
+				return false
+			}
+			p := s.Players[(s.Active+i)%n]
+			p.Hand = append(p.Hand, c)
+			if !s.Rules.RoundRobin {
+				break
+			}
+		}
+	}
+	return true
+}
+
+@ 새 턴이 어느 단계에서 열리는지다. 보통은 심기지만, 결투에서 앞사람이
+남긴 콩이 상 위에 있으면 그것을 처리하는 |PhaseOffer|부터 연다. 첫 턴에는
+남긴 콩이 없으므로 시작 플레이어는 자연히 이 단계를 건너뛴다---규칙서가
+말하는 ``시작 플레이어는 첫 턴에 1단계를 생략한다''가 저절로 이루어진다.
+@<턴 넘기기@>=
+func (s *State) openingPhase() Phase {
+	if s.Rules.Duel && len(s.FaceUp) > 0 {
+		return PhaseOffer
+	}
+	return PhasePlant
+}
+
+@ 어느 플레이어가 지금 수를 두어야 하는지는 단계가 정한다. 심기와 거래,
+그리고 결투의 두 단계는 활성 플레이어의 몫이고, 받은 콩 심기 단계에서는 아직
+못 심은 콩을 쥔 플레이어가 낮은 번호부터 차례로 나선다. 아무도 없거나 게임이
+끝났으면 $-1$을 돌려준다.
 @<턴 넘기기@>=
 func (s *State) ToAct() int {
 	switch s.Stage {
-	case PhasePlant:
+	case PhasePlant, PhaseOffer, PhaseDuelDraw:
 		return s.Active
 	case PhaseTrade:
 		if s.Pending != nil {
@@ -433,13 +555,21 @@ const (
 	ProposeTrade                   // 거래(교환 또는 기부)를 제안
 	RespondTrade                   // 제안을 수락 또는 거절
 	PlantGift                      // 받은 콩을 밭에 심기
+	TossRevealed                   // 결투: 공개 카드를 버림 더미로
+	TossHand                       // 결투: 손패 아무 데서나 한 장 버리기
 )
 
+@ 새 갈래는 반드시 목록 {\it 끝\/}에 붙였다. 웹 클라이언트가 |ActionKind|를
+JSON 숫자로 받아 갈래를 가르므로, 중간에 끼워 넣으면 이미 나가 있는 화면의
+버튼이 통째로 어긋나기 때문이다. 액션 본체에는 |HandNo| 한 칸을 더한다---
+|TossHand|가 손패 몇 번째를 버리는지 가리키는 자리다.
+@<액션@>=
 type Action struct {
 	Kind     ActionKind `json:"kind"`
 	Actor    int        `json:"player"` // 이 수를 두는 사람
 	FieldNo  int        `json:"field"`  // 심거나 거둘 밭 번호
 	FaceUpNo int        `json:"card"`   // |TakeRevealed|에서 공개 카드 번호
+	HandNo   int        `json:"hand"`   // |TossHand|에서 버릴 손패 번호
 	To       int        `json:"to"`     // 거래 상대
 
 	// |ProposeTrade|용: 주고받을 콩을 값으로 적는다.
@@ -473,6 +603,10 @@ func (a Action) String() string {
 		return "제안 거절"
 	case PlantGift:
 		return fmt.Sprintf("받은 콩을 %d번 밭에 심기", a.FieldNo)
+	case TossRevealed:
+		return fmt.Sprintf("공개 카드 %d번 버리기", a.FaceUpNo)
+	case TossHand:
+		return fmt.Sprintf("손패 %d번 버리기", a.HandNo)
 	}
 	return "알 수 없는 수"
 }
@@ -516,14 +650,19 @@ func (s *State) Legal(player int) []Action {
 		return s.legalTrade(player)
 	case PhaseHarvestGifts:
 		return s.legalGifts(player)
+	case PhaseOffer:
+		return s.legalOffer(player)
+	case PhaseDuelDraw:
+		return s.legalDuelDraw(player)
 	}
 	return nil
 }
 
 @ 심기 단계. 아직 두 장을 다 심지 않았고 손패가 남아 있으면, 맨 앞 카드를
-심을 수 있는 밭마다 수를 하나씩 낸다. 언제든 밭을 거둘 수 있고, 밭이 두 칸뿐인데
-코인이 3 이상이면 세 번째 밭을 살 수 있다. 한 장 이상 심었거나 손패가 비면
-단계를 끝낼 수 있다.
+심을 수 있는 밭마다 수를 하나씩 낸다. 언제든 밭을 거둘 수 있고, 변형이
+허락하고 밭이 두 칸뿐인데 코인이 3 이상이면 세 번째 밭을 살 수 있다($2\sim3$인
+변형은 밭 3칸으로 시작하는 대신 더 사지 못한다). 한 장 이상 심었거나 손패가
+비면 단계를 끝낼 수 있고, 그때 결투라면 손패를 한 장 버리는 수도 함께 낸다.
 @<합법수 열거@>=
 func (s *State) legalPlant(player int) []Action {
 	p := s.Players[player]
@@ -537,11 +676,28 @@ func (s *State) legalPlant(player int) []Action {
 		}
 	}
 	acts = append(acts, s.harvestActions(player)...)
-	if len(p.Fields) == 2 && p.Coins() >= 3 {
+	if s.Rules.ExtraField && len(p.Fields) == 2 && p.Coins() >= 3 {
 		acts = append(acts, Action{Kind: BuyField, Actor: player})
 	}
 	if s.PlantCount >= 1 || len(p.Hand) == 0 {
+		acts = append(acts, s.tossActions(player)...)
 		acts = append(acts, Action{Kind: EndPhase, Actor: player})
+	}
+	return acts
+}
+
+@ 결투의 2단계에서는 심기를 마친 뒤 손패 {\it 아무 자리에서나\/} 한 장을
+버림 더미에 앞면으로 놓을 수 있다---턴마다 한 장까지다. 손패는 순서가 곧
+규칙이라 같은 콩이라도 어느 자리를 빼느냐에 따라 남는 순서가 달라지므로,
+종류별로 묶지 않고 자리마다 하나씩 낸다.
+@<합법수 열거@>=
+func (s *State) tossActions(player int) []Action {
+	if !s.Rules.Duel || s.HandTossed {
+		return nil
+	}
+	var acts []Action
+	for i := range s.Players[player].Hand {
+		acts = append(acts, Action{Kind: TossHand, Actor: player, HandNo: i})
 	}
 	return acts
 }
@@ -675,6 +831,33 @@ func (s *State) legalGifts(player int) []Action {
 	return acts
 }
 
+@ 결투 1단계. 상대가 남긴 콩이 상 위에 있다. 한 알씩, 심을 수 있는 밭에
+심거나 그냥 버린다---어느 쪽이든 상에서 사라지므로 여기서 막히는 일은
+없다. 자리가 없으면 밭을 거두어 비울 수도 있다. 남김없이 처리해야 다음
+단계로 넘어가므로 단계를 끝내는 수는 따로 두지 않는다.
+@<합법수 열거@>=
+func (s *State) legalOffer(player int) []Action {
+	var acts []Action
+	for c := range s.FaceUp {
+		acts = append(acts, s.takeActions(player, c)...)
+		acts = append(acts, Action{Kind: TossRevealed, Actor: player, FaceUpNo: c})
+	}
+	return append(acts, s.harvestActions(player)...)
+}
+
+@ 결투 3단계. 뽑아 놓은 콩 가운데 원하는 것만 심고, 밭을 거두어 팔 수도
+있다. 단계를 끝내면 {\it 남은 콩이 그대로 상대의 제안이 된다\/}---그래서
+1단계와 달리 아무 때나 끝낼 수 있고, 하나도 심지 않고 통째로 넘겨도 된다.
+@<합법수 열거@>=
+func (s *State) legalDuelDraw(player int) []Action {
+	var acts []Action
+	for c := range s.FaceUp {
+		acts = append(acts, s.takeActions(player, c)...)
+	}
+	acts = append(acts, s.harvestActions(player)...)
+	return append(acts, Action{Kind: EndPhase, Actor: player})
+}
+
 @* 이벤트.
 |Apply|는 무슨 일이 있었는지 이벤트로 알린다. 이벤트는 한때 완성된 한국어
 문장이었다. 편하기는 했으나, 규칙만 알아야 할 엔진이 화면에 쓸 말까지 짓는
@@ -706,6 +889,9 @@ const (
 	TradeProposed EventKind = "tradeProposed" // 거래를 제안
 	TradeRejected EventKind = "tradeRejected" // 제안을 거절
 	TradeAccepted EventKind = "tradeAccepted" // 교환 성사
+	Tossed        EventKind = "tossed"        // 콩을 버림 더미에 버림
+	Offered       EventKind = "offered"       // 남은 콩을 상대에게 넘김
+	Fished        EventKind = "fished"        // 버림 더미에서 같은 콩을 끌어올림
 )
 
 @ 한 이벤트가 나르는 값이다. 갈래마다 쓰는 칸이 다르다---심기는 |Crop|과
@@ -767,6 +953,18 @@ case GiftStage:
 	return "받은 콩을 심는 단계로"
 case TurnPassed:
 	return "턴을 넘김"
+
+@ 결투에만 나오는 세 갈래다.
+@<갈래마다 기본 문장을 짓는다@>=
+case Tossed:
+	return fmt.Sprintf("%d번이 %s%s 버림", e.Actor,
+		e.Crop.Name(), objectParticle(e.Crop.Name()))
+case Offered:
+	return fmt.Sprintf("%d번이 %d번에게 [%s] 남김",
+		e.Actor, e.To, beanNames(e.Give))
+case Fished:
+	return fmt.Sprintf("버림 더미에서 %s%s 딸려 올라옴",
+		e.Crop.Name(), subjectParticle(e.Crop.Name()))
 
 @ 조사는 앞말의 받침을 따라 갈린다. 한글 음절은 |0xAC00|부터 스물여덟 개씩
 묶여 있어, 그 나머지가 $0$이면 받침이 없다. 콩 이름은 모두 ``콩''으로 끝나
@@ -832,6 +1030,10 @@ func (s *State) Apply(a Action) ([]Event, error) {
 		return s.applyRespond(a)
 	case PlantGift:
 		return s.applyPlantGift(a)
+	case TossRevealed:
+		return s.applyTossRevealed(a)
+	case TossHand:
+		return s.applyTossHand(a)
 	}
 	return nil, fmt.Errorf("보난자: 알 수 없는 액션")
 }
@@ -888,7 +1090,8 @@ func (s *State) applyBuyField(a Action) ([]Event, error) {
 }
 
 @ 심기 단계 끝내기. 아직 한 장도 안 심었고 손패가 남았다면 거절한다.
-넘어갈 때 덱에서 두 장을 뒤집어 공개하고 거래 단계로 옮긴다.
+넘어갈 때 기본 규칙은 덱에서 두 장을 뒤집어 거래 단계로 가고, 결투는 세 장을
+뽑아 나누기 단계로 간다. 결투의 나누기 단계를 끝내면 그대로 턴이 넘어간다.
 @<액션 적용@>=
 func (s *State) applyEndPhase(a Action) ([]Event, error) {
 	switch s.Stage {
@@ -897,9 +1100,14 @@ func (s *State) applyEndPhase(a Action) ([]Event, error) {
 		if s.PlantCount < 1 && len(p.Hand) > 0 {
 			return nil, fmt.Errorf("보난자: 맨 앞 카드를 먼저 심어야 함")
 		}
+		if s.Rules.Duel {
+			return s.beginDuelDraw()
+		}
 		return s.flipAndTrade()
 	case PhaseTrade:
 		return s.endTradePhase()
+	case PhaseDuelDraw:
+		return s.endDuelTurn()
 	}
 	return nil, fmt.Errorf("보난자: 이 단계는 끝낼 수 없음")
 }
@@ -920,6 +1128,55 @@ func (s *State) flipAndTrade() ([]Event, error) {
 	}
 	s.Stage = PhaseTrade
 	return ev, nil
+}
+
+@ 결투 3단계 열기. 덱에서 세 장을 뽑아 상에 펼친 뒤, 버림 더미 맨 위가 그중
+하나와 같은 콩이면 그것까지 끌어올린다. 끌어올린 카드도 상에 놓인 콩이 되므로
+새 짝을 만들 수 있고, 그래서 맨 위가 더는 걸리지 않을 때까지 되풀이한다.
+버림 더미가 두꺼울수록 한 번에 많은 콩을 쓸어 담게 되는, 결투의 별미다.
+@<액션 적용@>=
+func (s *State) beginDuelDraw() ([]Event, error) {
+	var ev []Event
+	for i := 0; i < 3; i++ {
+		c, ok := s.draw()
+		if !s.endIfEmpty(ok) {
+			return append(ev, Event{Kind: DeckEmptied,
+				Actor: NoActor, To: NoActor}), nil
+		}
+		s.FaceUp = append(s.FaceUp, c)
+		ev = append(ev, Event{Kind: Revealed,
+			Actor: NoActor, To: NoActor, Crop: c})
+	}
+	@<버림 더미 맨 위가 걸리는 동안 끌어올린다@>@;
+	s.Stage = PhaseDuelDraw
+	return ev, nil
+}
+
+@ @<버림 더미 맨 위가 걸리는 동안 끌어올린다@>=
+for len(s.Discard) > 0 {
+	top := s.Discard[len(s.Discard)-1]
+	if !containsAll(s.FaceUp, []Card{top}) {
+		break
+	}
+	s.Discard = s.Discard[:len(s.Discard)-1]
+	s.FaceUp = append(s.FaceUp, top)
+	ev = append(ev, Event{Kind: Fished, Actor: NoActor, To: NoActor, Crop: top})
+}
+
+@ 결투 3단계 끝내기, 곧 턴 넘기기다. 상에 남은 콩은 치우지 않는다---그대로
+둔 채 차례만 넘어가면, 다음 사람이 턴을 열 때 그것이 곧 ``상대가 남긴 제안''이
+된다. 카드를 옮기지 않고 임자만 바뀌는 셈이라, 상 위의 더미 하나로 3단계의
+{\it 남긴 콩\/}과 1단계의 {\it 받은 콩\/}을 다 표현할 수 있다.
+@<액션 적용@>=
+func (s *State) endDuelTurn() ([]Event, error) {
+	var ev []Event
+	if len(s.FaceUp) > 0 {
+		ev = append(ev, Event{Kind: Offered, Actor: s.Active,
+			To: (s.Active + 1) % len(s.Players),
+			Give: append([]Card{}, s.FaceUp...)})
+	}
+	s.endTurn()
+	return append(ev, Event{Kind: TurnPassed, Actor: NoActor, To: NoActor}), nil
 }
 
 @ 거래 단계 끝내기. 공개 카드가 남아 있으면 거절한다. 받은 콩을 쥔 사람이
@@ -950,8 +1207,60 @@ func (s *State) applyTake(a Action) ([]Event, error) {
 		return nil, err
 	}
 	s.FaceUp = removeCard(s.FaceUp, a.FaceUpNo)
+	s.offerDone()
 	return []Event{{Kind: PlantedFaceUp, Actor: a.Actor, To: NoActor,
 		Crop: b, FieldNo: a.FieldNo}}, nil
+}
+
+@ 결투 1단계에서 상 위의 콩을 버린다. 심을 밭이 없거나 심기 싫은 콩을
+치우는 길이다.
+@<액션 적용@>=
+func (s *State) applyTossRevealed(a Action) ([]Event, error) {
+	if s.Stage != PhaseOffer {
+		return nil, fmt.Errorf("보난자: 지금은 공개 카드를 버릴 수 없음")
+	}
+	if a.FaceUpNo < 0 || a.FaceUpNo >= len(s.FaceUp) {
+		return nil, fmt.Errorf("보난자: 공개 카드 번호가 범위를 벗어남")
+	}
+	b := s.FaceUp[a.FaceUpNo]
+	s.Discard = append(s.Discard, b)
+	s.FaceUp = removeCard(s.FaceUp, a.FaceUpNo)
+	s.offerDone()
+	return []Event{{Kind: Tossed, Actor: a.Actor, To: NoActor, Crop: b}}, nil
+}
+
+@ 상 위의 콩을 다 처리했으면 1단계가 저절로 끝난다. 끝내는 수를 따로 두지
+않았으므로, 마지막 한 알이 사라지는 자리에서 심기 단계로 옮겨 준다.
+@<액션 적용@>=
+func (s *State) offerDone() {
+	if s.Stage == PhaseOffer && len(s.FaceUp) == 0 {
+		s.Stage = PhasePlant
+	}
+}
+
+@ 결투 2단계에서 손패 한 장을 버린다. 손패 {\it 아무 자리\/}에서나 뽑아낼 수
+있는 유일한 곳이다---보난자에서 손패 순서를 건드리는 일은 이만큼 드물다.
+턴마다 한 장까지이므로 |HandTossed|를 세워 둔다.
+@<액션 적용@>=
+func (s *State) applyTossHand(a Action) ([]Event, error) {
+	p := s.Players[s.Active]
+	if !s.Rules.Duel || s.Stage != PhasePlant {
+		return nil, fmt.Errorf("보난자: 지금은 손패를 버릴 수 없음")
+	}
+	if s.HandTossed {
+		return nil, fmt.Errorf("보난자: 한 턴에 한 장만 버릴 수 있음")
+	}
+	if s.PlantCount < 1 && len(p.Hand) > 0 {
+		return nil, fmt.Errorf("보난자: 맨 앞 카드를 먼저 심어야 함")
+	}
+	if a.HandNo < 0 || a.HandNo >= len(p.Hand) {
+		return nil, fmt.Errorf("보난자: 손패 번호가 범위를 벗어남")
+	}
+	b := p.Hand[a.HandNo]
+	s.Discard = append(s.Discard, b)
+	p.Hand = removeCard(p.Hand, a.HandNo)
+	s.HandTossed = true
+	return []Event{{Kind: Tossed, Actor: a.Actor, To: NoActor, Crop: b}}, nil
 }
 
 @ 거래 제안. 활성 플레이어가 상대에게 ``이 콩들을 줄 테니 저 콩들을 달라''고
@@ -1277,6 +1586,9 @@ import (
 @<다장 거래 시험@>@;
 @<뷰 가림 시험@>@;
 @<수확 제한 시험@>@;
+@<변형 차림 시험@>@;
+@<보충 시험@>@;
+@<결투 시험@>@;
 @<무작위 완주 시험@>@;
 
 @ 덱은 정확히 154장이어야 하고, 콩미터 테이블의 장수 합도 154여야 한다.
@@ -1504,6 +1816,203 @@ func TestHarvestRestriction(t *testing.T) {
 	q := &Player{Fields: []Field{{Coffee, 1}, {Blue, 1}}}
 	if !q.canHarvest(0) || !q.canHarvest(1) {
 		t.Error("모든 밭이 한 장이면 어느 밭이든 거둘 수 있어야 함")
+	}
+}
+
+@ 인원마다 판이 제대로 차려지는지 본다. 덱 장수는 154에서 뺀 콩과 나눠 준
+손패를 덜어낸 만큼이어야 하고, 밭 칸수는 변형이 정한 대로여야 하며, 뺀 콩은
+|Removed|에 그대로 있어야 한다---그래야 카드 보존이 154장으로 성립한다.
+@<변형 차림 시험@>=
+func TestVariantSetup(t *testing.T) {
+	cases := []struct{ players, deck, removed, fields int }{
+		{2, 144 - 10, 10, 3}, // 정원콩 6 + 카카오콩 4를 뺀다
+		{3, 150 - 15, 4, 3},  // 카카오콩 4를 뺀다
+		{4, 154 - 20, 0, 2},  // 기본 규칙: 아무것도 안 뺀다
+	}
+	for _, c := range cases {
+		s, err := New(c.players, 7)
+		if err != nil {
+			t.Fatal(err)
+		}
+		@<차림이 표대로인지 본다@>@;
+	}
+}
+
+@ 뺀 콩이 손패로 새어 들지 않았는지까지 확인한다---덱을 쌓을 때 갈라 담으므로
+샐 수 없어야 하지만, 그 갈래가 곧 변형의 전부이니 못 박아 둔다.
+@<차림이 표대로인지 본다@>=
+if len(s.Deck) != c.deck {
+	t.Errorf("%d인: 덱 %d장, %d장 기대", c.players, len(s.Deck), c.deck)
+}
+if len(s.Removed) != c.removed {
+	t.Errorf("%d인: 뺀 콩 %d장, %d장 기대", c.players, len(s.Removed), c.removed)
+}
+if n := len(s.Players[0].Fields); n != c.fields {
+	t.Errorf("%d인: 밭 %d칸, %d칸 기대", c.players, n, c.fields)
+}
+if err := s.Check(); err != nil {
+	t.Errorf("%d인: %v", c.players, err)
+}
+for _, p := range s.Players {
+	for _, b := range p.Hand {
+		if s.Rules.drops(b) {
+			t.Errorf("%d인: 뺀 %s이 손패에 있음", c.players, b.Name())
+		}
+	}
+}
+
+@ 세 번째 밭 사기는 4인에서만 나와야 한다. $2\sim3$인은 밭 3칸으로 시작하는
+대신 더 사지 못한다.
+@<변형 차림 시험@>=
+func TestFieldBuyingByVariant(t *testing.T) {
+	for _, c := range []struct {
+		players int
+		want    bool
+	}{{2, false}, {3, false}, {4, true}} {
+		s, _ := New(c.players, 5)
+		s.Players[0].Treasury = []Card{Red, Red, Red}
+		got := false
+		for _, a := range s.Legal(0) {
+			if a.Kind == BuyField {
+				got = true
+			}
+		}
+		if got != c.want {
+			t.Errorf("%d인: 밭 사기 %v, %v 기대", c.players, got, c.want)
+		}
+	}
+}
+
+@ 보충은 인원마다 모양이 다르다. 3인은 전원이 한 장씩 돌고, 4인은 활성
+플레이어 혼자 세 장을 뽑는다.
+@<보충 시험@>=
+func TestRefillByVariant(t *testing.T) {
+	s3, _ := New(3, 5)
+	before := handSizes(s3)
+	s3.endTurn()
+	for i, p := range s3.Players {
+		if len(p.Hand) != before[i]+1 {
+			t.Errorf("3인 %d번: %d→%d장, 한 장씩 기대",
+				i, before[i], len(p.Hand))
+		}
+	}
+	@<4인은 활성 플레이어만 세 장인지 본다@>@;
+}
+
+@ @<4인은 활성 플레이어만 세 장인지 본다@>=
+s4, _ := New(4, 5)
+was := handSizes(s4)
+s4.endTurn()
+for i, p := range s4.Players {
+	want := was[i]
+	if i == 0 {
+		want += 3
+	}
+	if len(p.Hand) != want {
+		t.Errorf("4인 %d번: %d장, %d장 기대", i, len(p.Hand), want)
+	}
+}
+
+@ @<보충 시험@>=
+func handSizes(s *State) []int {
+	n := make([]int, len(s.Players))
+	for i, p := range s.Players {
+		n[i] = len(p.Hand)
+	}
+	return n
+}
+
+@ 결투에서만 나오는 손패 버리기다. 자리마다 하나씩 수가 나오고, 버린 카드는
+버림 더미로 가며, 한 턴에 두 번째는 거절당해야 한다.
+@<결투 시험@>=
+func TestDuelTossHand(t *testing.T) {
+	s, _ := New(2, 11)
+	p := s.Players[0]
+	if _, err := s.Apply(Action{Kind: PlantFront, Actor: 0, FieldNo: 0}); err != nil {
+		t.Fatal(err) // 한 장 심어야 버릴 수 있다
+	}
+	@<버리기 수가 손패 자리마다 나오는지 본다@>@;
+	@<한 장 버리고, 두 번째는 막히는지 본다@>@;
+}
+
+@ @<버리기 수가 손패 자리마다 나오는지 본다@>=
+tosses := 0
+for _, a := range s.Legal(0) {
+	if a.Kind == TossHand {
+		tosses++
+	}
+}
+if tosses != len(p.Hand) {
+	t.Errorf("버리기 수 %d개, 손패 %d장", tosses, len(p.Hand))
+}
+
+@ @<한 장 버리고, 두 번째는 막히는지 본다@>=
+want, size := p.Hand[2], len(p.Hand)
+ev, err := s.Apply(Action{Kind: TossHand, Actor: 0, HandNo: 2})
+if err != nil {
+	t.Fatal(err)
+}
+if ev[0].Kind != Tossed || ev[0].Crop != want {
+	t.Errorf("이벤트가 어긋남: %v", ev[0])
+}
+if s.Discard[len(s.Discard)-1] != want {
+	t.Error("버린 콩이 버림 더미에 없음")
+}
+if len(p.Hand) != size-1 {
+	t.Errorf("손패가 %d장", len(p.Hand))
+}
+if _, err := s.Apply(Action{Kind: TossHand, Actor: 0, HandNo: 0}); err == nil {
+	t.Error("한 턴에 두 장을 버렸는데 통과함")
+}
+if err := s.Check(); err != nil {
+	t.Error(err)
+}
+
+@ 결투의 턴 흐름을 통째로 본다. 시작 플레이어는 상 위에 아무것도 없으므로
+|PhaseOffer|를 건너뛰어야 하고, 심기를 끝내면 세 장이 뒤집혀 나누기 단계로
+가야 하며, 그 단계를 끝내면 남은 콩이 그대로 다음 사람의 받은 제안이 되어야
+한다---카드가 옮겨 다니지 않고 임자만 바뀌는지가 핵심이다.
+@<결투 시험@>=
+func TestDuelTurnFlow(t *testing.T) {
+	s, _ := New(2, 3)
+	if s.Stage != PhasePlant {
+		t.Fatalf("시작 단계가 %v, 시작 플레이어는 제안을 건너뛰어야 함", s.Stage)
+	}
+	mustApply(t, s, Action{Kind: PlantFront, Actor: 0, FieldNo: 0})
+	mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
+	@<세 장이 뒤집혀 나누기 단계인지 본다@>@;
+	@<남긴 콩이 상대의 받은 제안이 되는지 본다@>@;
+}
+
+@ @<세 장이 뒤집혀 나누기 단계인지 본다@>=
+if s.Stage != PhaseDuelDraw {
+	t.Fatalf("단계가 %v, 뽑아 나누기 기대", s.Stage)
+}
+if len(s.FaceUp) < 3 {
+	t.Fatalf("상 위에 %d장, 적어도 3장 기대", len(s.FaceUp))
+}
+
+@ @<남긴 콩이 상대의 받은 제안이 되는지 본다@>=
+left := append([]Card{}, s.FaceUp...)
+mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
+if s.Active != 1 {
+	t.Errorf("차례가 %d번", s.Active)
+}
+if s.Stage != PhaseOffer {
+	t.Errorf("단계가 %v, 받은 제안 기대", s.Stage)
+}
+if !containsAll(s.FaceUp, left) || len(s.FaceUp) != len(left) {
+	t.Errorf("남긴 콩이 바뀜: %v → %v", left, s.FaceUp)
+}
+if err := s.Check(); err != nil {
+	t.Error(err)
+}
+
+@ @<결투 시험@>=
+func mustApply(t *testing.T, s *State, a Action) {
+	t.Helper()
+	if _, err := s.Apply(a); err != nil {
+		t.Fatalf("%v: %v", a, err)
 	}
 }
 

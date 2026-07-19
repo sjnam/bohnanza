@@ -77,6 +77,8 @@
   /* 이제 이벤트가 갈래를 아는 값이라, 눈에 띄어야 할 것만 도드라지게 할 수 있다. */
   .log .ev-tradeProposed, .log .ev-tradeAccepted { color: var(--accent); }
   .log .ev-harvested { color: var(--accent2); }
+  .log .ev-offered { color: var(--accent); }
+  .log .ev-tossed, .log .ev-fished { opacity: .75; }
   .log .ev-deckEmptied { color: var(--accent); font-weight: 600; }
   .log .mine { font-weight: 600; }
   .chat { max-height: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
@@ -146,7 +148,7 @@
         <div class="muted">덱 <span id="deck"></span>장 · 버림 <span id="discard"></span>장</div>
       </div>
       <div id="faceupBox" class="row hide" style="margin-top:8px">
-        <span class="muted">공개 카드:</span><div class="beans" id="faceup"></div>
+        <span class="muted" id="faceupLab">공개 카드:</span><div class="beans" id="faceup"></div>
       </div>
     </div>
 
@@ -281,6 +283,8 @@ function actionLabel(a) {
     }
     case 6: return a.accept ? "제안 수락" : "제안 거절";
     case 7: return `받은 콩을 밭 ${a.field}에 심기`;
+    case 8: return `공개 카드 ${a.card} 버리기`;
+    case 9: return `손패 ${a.hand}번 버리기`;
   }
   return "알 수 없는 수";
 }
@@ -428,6 +432,11 @@ function eventText(e) {
     case "tradeAccepted":
       return `${who}${subP(who)} ${pName(e.to)}${withP(pName(e.to))} `
         + `[${beanList(e.give)}] 주고 [${beanList(e.get)}] 받아 교환 성사`;
+    // 아래 셋은 2인 콩 결투에만 나온다.
+    case "tossed":  return `${who}${subP(who)} ${crop}${objP(crop)} 버림`;
+    case "offered":
+      return `${who}${subP(who)} ${pName(e.to)}에게 [${beanList(e.give)}] 남김`;
+    case "fished":  return `버림 더미에서 ${crop}${subP(crop)} 딸려 올라옴`;
   }
   return e.kind; // 모르는 갈래는 이름만 적어 둔다
 }
@@ -464,9 +473,17 @@ function render(v) {
   if (v.over) renderScores(v);
 }
 
+// 상 위의 더미는 단계마다 뜻이 다르다. 결투에서는 같은 자리가 "상대가 남긴
+// 콩"이었다가 "내가 뽑은 콩"이 되므로, 이름표를 단계에 맞춰 갈아 준다.
+const FACEUP_LAB = {
+  "받은 제안": "상대가 남긴 콩:",
+  "뽑아 나누기": "뽑은 콩 — 안 가져가면 상대에게 넘어감:",
+};
+
 function renderFaceUp(v) {
   const box = $("faceupBox"), fu = $("faceup");
   fu.innerHTML = "";
+  $("faceupLab").textContent = FACEUP_LAB[v.phaseName] || "공개 카드:";
   if (v.faceUp && v.faceUp.length) {
     box.classList.remove("hide");
     v.faceUp.forEach((b, i) => fu.appendChild(beanPill(b, i)));

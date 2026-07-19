@@ -1,4 +1,4 @@
-//line bohnanza.w:1266
+//line bohnanza.w:1575
 package bohnanza
 
 import (
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-//line bohnanza.w:1284
+//line bohnanza.w:1596
 func TestDeckSize(t *testing.T) {
 	total := 0
 	for b := Bean(0); b < NumBeans; b++ {
@@ -25,7 +25,7 @@ func TestDeckSize(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1304
+//line bohnanza.w:1616
 func TestCoins(t *testing.T) {
 	cases := []struct {
 		b    Bean
@@ -43,7 +43,7 @@ func TestCoins(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1326
+//line bohnanza.w:1638
 func TestBilateralTrade(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -64,7 +64,7 @@ func TestBilateralTrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-//line bohnanza.w:1351
+//line bohnanza.w:1663
 	p0, p1 := s.Players[0], s.Players[1]
 	if len(p0.Acquired) != 1 || p0.Acquired[0] != Red {
 		t.Errorf("0번 받은 콩이 강낭콩이 아님: %v", p0.Acquired)
@@ -82,10 +82,10 @@ func TestBilateralTrade(t *testing.T) {
 		t.Error("교환 뒤에도 대기 제안이 남음")
 	}
 
-//line bohnanza.w:1346
+//line bohnanza.w:1658
 }
 
-//line bohnanza.w:1371
+//line bohnanza.w:1683
 func TestMultiCardTrade(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -114,7 +114,7 @@ func TestMultiCardTrade(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1403
+//line bohnanza.w:1715
 func TestProposeNeedsFulfillment(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -142,7 +142,7 @@ func TestProposeNeedsFulfillment(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1435
+//line bohnanza.w:1747
 func TestViewRedaction(t *testing.T) {
 	s, err := New(3, 7)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestViewRedaction(t *testing.T) {
 		t.Errorf("덱 장수가 틀림: %d", v.DeckCount)
 	}
 
-//line bohnanza.w:1459
+//line bohnanza.w:1771
 	b, err := s.ViewJSON(0)
 	if err != nil {
 		t.Fatal(err)
@@ -186,10 +186,10 @@ func TestViewRedaction(t *testing.T) {
 		t.Errorf("도감이 이상함: %d종 %d장", len(cat), total)
 	}
 
-//line bohnanza.w:1454
+//line bohnanza.w:1766
 }
 
-//line bohnanza.w:1486
+//line bohnanza.w:1798
 func TestHarvestRestriction(t *testing.T) {
 	s := &State{
 		Players: []*Player{{Fields: []Field{{Coffee, 1}, {Blue, 2}}}},
@@ -214,7 +214,195 @@ func TestHarvestRestriction(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1514
+//line bohnanza.w:1826
+func TestVariantSetup(t *testing.T) {
+	cases := []struct{ players, deck, removed, fields int }{
+		{2, 144 - 10, 10, 3}, // 정원콩 6 + 카카오콩 4를 뺀다
+		{3, 150 - 15, 4, 3},  // 카카오콩 4를 뺀다
+		{4, 154 - 20, 0, 2},  // 기본 규칙: 아무것도 안 뺀다
+	}
+	for _, c := range cases {
+		s, err := New(c.players, 7)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+//line bohnanza.w:1844
+		if len(s.Deck) != c.deck {
+			t.Errorf("%d인: 덱 %d장, %d장 기대", c.players, len(s.Deck), c.deck)
+		}
+		if len(s.Removed) != c.removed {
+			t.Errorf("%d인: 뺀 콩 %d장, %d장 기대", c.players, len(s.Removed), c.removed)
+		}
+		if n := len(s.Players[0].Fields); n != c.fields {
+			t.Errorf("%d인: 밭 %d칸, %d칸 기대", c.players, n, c.fields)
+		}
+		if err := s.Check(); err != nil {
+			t.Errorf("%d인: %v", c.players, err)
+		}
+		for _, p := range s.Players {
+			for _, b := range p.Hand {
+				if s.Rules.drops(b) {
+					t.Errorf("%d인: 뺀 %s이 손패에 있음", c.players, b.Name())
+				}
+			}
+		}
+
+//line bohnanza.w:1838
+	}
+}
+
+//line bohnanza.w:1867
+func TestFieldBuyingByVariant(t *testing.T) {
+	for _, c := range []struct {
+		players int
+		want    bool
+	}{{2, false}, {3, false}, {4, true}} {
+		s, _ := New(c.players, 5)
+		s.Players[0].Treasury = []Card{Red, Red, Red}
+		got := false
+		for _, a := range s.Legal(0) {
+			if a.Kind == BuyField {
+				got = true
+			}
+		}
+		if got != c.want {
+			t.Errorf("%d인: 밭 사기 %v, %v 기대", c.players, got, c.want)
+		}
+	}
+}
+
+//line bohnanza.w:1889
+func TestRefillByVariant(t *testing.T) {
+	s3, _ := New(3, 5)
+	before := handSizes(s3)
+	s3.endTurn()
+	for i, p := range s3.Players {
+		if len(p.Hand) != before[i]+1 {
+			t.Errorf("3인 %d번: %d→%d장, 한 장씩 기대",
+				i, before[i], len(p.Hand))
+		}
+	}
+
+//line bohnanza.w:1903
+	s4, _ := New(4, 5)
+	was := handSizes(s4)
+	s4.endTurn()
+	for i, p := range s4.Players {
+		want := was[i]
+		if i == 0 {
+			want += 3
+		}
+		if len(p.Hand) != want {
+			t.Errorf("4인 %d번: %d장, %d장 기대", i, len(p.Hand), want)
+		}
+	}
+
+//line bohnanza.w:1900
+}
+
+//line bohnanza.w:1917
+func handSizes(s *State) []int {
+	n := make([]int, len(s.Players))
+	for i, p := range s.Players {
+		n[i] = len(p.Hand)
+	}
+	return n
+}
+
+//line bohnanza.w:1928
+func TestDuelTossHand(t *testing.T) {
+	s, _ := New(2, 11)
+	p := s.Players[0]
+	if _, err := s.Apply(Action{Kind: PlantFront, Actor: 0, FieldNo: 0}); err != nil {
+		t.Fatal(err) // 한 장 심어야 버릴 수 있다
+	}
+
+//line bohnanza.w:1939
+	tosses := 0
+	for _, a := range s.Legal(0) {
+		if a.Kind == TossHand {
+			tosses++
+		}
+	}
+	if tosses != len(p.Hand) {
+		t.Errorf("버리기 수 %d개, 손패 %d장", tosses, len(p.Hand))
+	}
+
+//line bohnanza.w:1935
+
+//line bohnanza.w:1950
+	want, size := p.Hand[2], len(p.Hand)
+	ev, err := s.Apply(Action{Kind: TossHand, Actor: 0, HandNo: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev[0].Kind != Tossed || ev[0].Crop != want {
+		t.Errorf("이벤트가 어긋남: %v", ev[0])
+	}
+	if s.Discard[len(s.Discard)-1] != want {
+		t.Error("버린 콩이 버림 더미에 없음")
+	}
+	if len(p.Hand) != size-1 {
+		t.Errorf("손패가 %d장", len(p.Hand))
+	}
+	if _, err := s.Apply(Action{Kind: TossHand, Actor: 0, HandNo: 0}); err == nil {
+		t.Error("한 턴에 두 장을 버렸는데 통과함")
+	}
+	if err := s.Check(); err != nil {
+		t.Error(err)
+	}
+
+//line bohnanza.w:1936
+}
+
+//line bohnanza.w:1976
+func TestDuelTurnFlow(t *testing.T) {
+	s, _ := New(2, 3)
+	if s.Stage != PhasePlant {
+		t.Fatalf("시작 단계가 %v, 시작 플레이어는 제안을 건너뛰어야 함", s.Stage)
+	}
+	mustApply(t, s, Action{Kind: PlantFront, Actor: 0, FieldNo: 0})
+	mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
+
+//line bohnanza.w:1988
+	if s.Stage != PhaseDuelDraw {
+		t.Fatalf("단계가 %v, 뽑아 나누기 기대", s.Stage)
+	}
+	if len(s.FaceUp) < 3 {
+		t.Fatalf("상 위에 %d장, 적어도 3장 기대", len(s.FaceUp))
+	}
+
+//line bohnanza.w:1984
+
+//line bohnanza.w:1996
+	left := append([]Card{}, s.FaceUp...)
+	mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
+	if s.Active != 1 {
+		t.Errorf("차례가 %d번", s.Active)
+	}
+	if s.Stage != PhaseOffer {
+		t.Errorf("단계가 %v, 받은 제안 기대", s.Stage)
+	}
+	if !containsAll(s.FaceUp, left) || len(s.FaceUp) != len(left) {
+		t.Errorf("남긴 콩이 바뀜: %v → %v", left, s.FaceUp)
+	}
+	if err := s.Check(); err != nil {
+		t.Error(err)
+	}
+
+//line bohnanza.w:1985
+}
+
+//line bohnanza.w:2012
+func mustApply(t *testing.T, s *State, a Action) {
+	t.Helper()
+	if _, err := s.Apply(a); err != nil {
+		t.Fatalf("%v: %v", a, err)
+	}
+}
+
+//line bohnanza.w:2023
 func TestRandomPlaythrough(t *testing.T) {
 	for seed := uint64(0); seed < 200; seed++ {
 		players := 2 + int(seed%3)
@@ -224,7 +412,7 @@ func TestRandomPlaythrough(t *testing.T) {
 		}
 		rng := rand.New(rand.NewPCG(seed, 12345))
 
-//line bohnanza.w:1529
+//line bohnanza.w:2038
 		for step := 0; step < 100000 && !s.Over(); step++ {
 			actor := s.ToAct()
 			if actor < 0 {
@@ -245,6 +433,6 @@ func TestRandomPlaythrough(t *testing.T) {
 			t.Fatalf("씨앗 %d: 10만 수 안에 게임이 안 끝남", seed)
 		}
 
-//line bohnanza.w:1523
+//line bohnanza.w:2032
 	}
 }

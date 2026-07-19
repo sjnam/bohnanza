@@ -46,6 +46,7 @@ import (
 @<거래 제안 만들기@>@;
 @<제안에 응답하는 수@>@;
 @<받은 콩 단계의 수@>@;
+@<결투 단계의 수@>@;
 @<작은 도우미들@>@;
 @<대전장@>@;
 
@@ -96,6 +97,10 @@ func (g *Greedy) Act(v bz.View, rng *rand.Rand) bz.Action {
 		return g.tradeMove(v)
 	case bz.PhaseHarvestGifts:
 		return giftMove(v)
+	case bz.PhaseOffer:
+		return offerMove(v)
+	case bz.PhaseDuelDraw:
+		return duelDrawMove(v)
 	}
 	return v.Legal[0]
 }
@@ -414,6 +419,46 @@ func giftMove(v bz.View) bz.Action {
 	return v.Legal[0]
 }
 
+@* 결투 단계.
+2인 콩 결투에는 거래가 없다. 대신 두 단계가 새로 있어, 봇도 그 둘을 알아야
+한다. 두 단계 모두 상 위의 콩을 다루지만 {\it 처지가 정반대\/}라 어림짐작도
+반대로 간다.
+
+@ 1단계는 상대가 떠넘긴 콩을 받는 자리다. 남김없이 치워야 다음으로 넘어가므로
+선택지는 ``심는다''와 ``버린다''뿐이다. 내 밭과 맞으면 집어 더미를 키우고, 빈
+밭이 있으면 거기 놓고, 그도 저도 아니면 {\bf 버린다}. 거래 단계에서라면 값진
+밭을 헐어서라도 심어야 했지만 여기서는 버리는 길이 열려 있으니, 밭을 헐 까닭이
+없다---결투에서 상대의 떠넘기기가 덜 아픈 이유다.
+@<결투 단계의 수@>=
+func offerMove(v bz.View) bz.Action {
+	me := v.Players[v.You]
+	@<익은 밭이 있으면 거둔다@>@;
+	@<내 밭과 맞는 공개 카드를 집는다@>@;
+	@<공개 카드를 빈 밭에 놓는다@>@;
+	@<남는 콩은 버린다@>@;
+	return v.Legal[0]
+}
+
+@ @<남는 콩은 버린다@>=
+if a, ok := pick(v.Legal, func(a bz.Action) bool {
+	return a.Kind == bz.TossRevealed
+}); ok {
+	return a
+}
+
+@ 3단계는 내가 뽑은 콩을 나누는 자리다. 여기서는 {\bf 남기는 것이 공짜다}---
+집지 않은 콩은 그대로 상대에게 넘어가므로, 억지로 가져올 까닭이 없다. 그래서
+내 밭과 맞는 콩만 집고 나머지는 상대에게 떠넘긴 뒤 단계를 끝낸다. 빈 밭에
+아무 콩이나 채우지 않는 것도 같은 까닭이다---그 자리는 손패에서 나올 좋은 콩을
+위해 비워 두는 편이 낫다.
+@<결투 단계의 수@>=
+func duelDrawMove(v bz.View) bz.Action {
+	me := v.Players[v.You]
+	@<익은 밭이 있으면 거둔다@>@;
+	@<내 밭과 맞는 공개 카드를 집는다@>@;
+	return endOr(v)
+}
+
 @* 작은 도우미들.
 정책들이 함께 쓰는 잔손질을 모은다. |pick|은 합법수 목록에서 조건에 맞는 첫
 수를 찾고, |hasKind|는 어떤 종류의 수가 목록에 있는지 본다.
@@ -611,9 +656,11 @@ func TestArenaMultiplayer(t *testing.T) {
 
 @ 거래의 값어치를 잰다. 모두 비거래 봇인 판과 모두 거래 봇인 판의 평균
 개인 점수를 견준다. 거래가 실력이라면 거래 봇들의 평균이 더 높아야 한다.
+2인은 재지 않는다---콩 결투에는 거래가 아예 없어 두 정책이 글자 그대로 같은
+수를 두므로, 견줄 것이 없기 때문이다(실제로 평균이 소수점까지 똑같이 나온다).
 @<거래가 점수를 올리는지 시험@>=
 func TestTradingRaisesScores(t *testing.T) {
-	for _, n := range []int{2, 3, 4} {
+	for _, n := range []int{3, 4} {
 		cautious := avgScore(t, n, false)
 		trading := avgScore(t, n, true)
 		t.Logf("%d인: 비거래 평균 %.2f → 거래 평균 %.2f",
@@ -622,6 +669,15 @@ func TestTradingRaisesScores(t *testing.T) {
 			t.Errorf("%d인: 거래가 점수를 못 올림 (%.2f vs %.2f)",
 				n, trading, cautious)
 		}
+	}
+}
+
+@ 그 ``글자 그대로 같다''를 시험으로도 못 박아 둔다. 2인 결투에서 거래 봇과
+비거래 봇의 평균이 어긋난다면, 결투 갈래 어딘가로 거래 코드가 새어 든 것이다.
+@<거래가 점수를 올리는지 시험@>=
+func TestDuelHasNoTrading(t *testing.T) {
+	if a, b := avgScore(t, 2, false), avgScore(t, 2, true); a != b {
+		t.Errorf("2인 결투에 거래가 스몄다: 비거래 %.4f, 거래 %.4f", a, b)
 	}
 }
 
@@ -650,34 +706,53 @@ func avgScore(t *testing.T, n int, trade bool) float64 {
 	return float64(total) / float64(N*n)
 }
 
-@ 마지막으로 거래 봇과 비거래 봇을 직접 맞붙여, 거래가 {\it 이기는\/} 실력인지
-본다(점수만 오르고 승부는 손해일 수도 있으니). 자리를 맞바꿔 두 판씩 두고
-승수를 견준다.
+@ 마지막으로 거래 봇과 비거래 봇을 직접 맞붙인다. 거래가 있는 판이라야 뜻이
+있으므로 4인전에서, 거래 봇 하나를 비거래 봇 셋 사이에 앉히고 자리를 돌려 가며
+둔다. 재는 것은 점수와 승률 두 가지다.
 @<거래 봇 대 비거래 봇 시험@>=
 func TestTradingVsCautious(t *testing.T) {
-	const N = 300
-	tWins, cWins, ties := 0, 0, 0
+	const N = 400
+	wins, mine, theirs := 0, 0, 0
 	for seed := uint64(0); seed < N; seed++ {
-		for tSeat := 0; tSeat < 2; tSeat++ {
-			ps := make([]Policy, 2)
-			ps[tSeat] = NewGreedy()
-			ps[1-tSeat] = NewCautious()
-			scores, err := Play(ps, seed)
-			if err != nil {
-				t.Fatal(err)
-			}
-			switch t2, c := scores[tSeat], scores[1-tSeat]; {
-			case t2 > c:
-				tWins++
-			case t2 < c:
-				cWins++
-			default:
-				ties++
-			}
+		ps := make([]Policy, 4)
+		for i := range ps {
+			ps[i] = NewCautious()
 		}
+		seat := int(seed) % 4
+		ps[seat] = NewGreedy()
+		scores, err := Play(ps, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		@<거래 봇의 승패와 점수를 센다@>@;
 	}
-	t.Logf("거래 봇 %d승 / 비거래 봇 %d승 / 무승부 %d (총 %d판)",
-		tWins, cWins, ties, 2*N)
+	@<거래가 점수는 올리되 승률은 못 올림을 확인한다@>@;
+}
+
+@ @<거래 봇의 승패와 점수를 센다@>=
+if soleWinner(scores, seat) {
+	wins++
+}
+for i, sc := range scores {
+	if i == seat {
+		mine += sc
+	} else {
+		theirs += sc
+	}
+}
+
+@ 결과가 재미있다. 거래 봇의 평균 점수는 비거래 봇보다 뚜렷이 높은데(2.07 대
+1.70쯤), {\it 승률은 공정 몫인 25\%를 넘지 못한다\/}(3000판에서 24.9\%). 거래가
+{\bf 양의 합}이기 때문이다---내가 필요 없는 콩을 넘기면 나도 이득이지만 받는
+쪽도 이득이라, 절대 점수는 다 같이 오르고 상대와의 {\it 차이\/}는 남지 않는다.
+그러니 점수 쪽만 못 박고 승률은 적어 두기만 한다. 이것이 봇을 다음 판으로
+끌고 갈 실마리다---지금 봇은 ``누구에게 주는 것이 덜 이로운가''를 따지지 않는다.
+@<거래가 점수는 올리되 승률은 못 올림을 확인한다@>=
+mineAvg, theirsAvg := float64(mine)/N, float64(theirs)/(3*N)
+t.Logf("거래 봇 평균 %.2f, 비거래 봇 평균 %.2f, 거래 봇 승률 %.1f%%(공정 몫 25%%)",
+	mineAvg, theirsAvg, 100*float64(wins)/N)
+if mineAvg <= theirsAvg {
+	t.Errorf("거래 봇이 비거래 봇보다 점수가 낮음: %.2f 대 %.2f", mineAvg, theirsAvg)
 }
 
 @* 색인.

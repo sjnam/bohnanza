@@ -1,9 +1,9 @@
-//line bot.w:522
+//line bot/bot.w:567
 package bot
 
 import "testing"
 
-//line bot.w:535
+//line bot/bot.w:580
 func soleWinner(scores []int, seat int) bool {
 	for i, sc := range scores {
 		if i != seat && sc >= scores[seat] {
@@ -13,7 +13,7 @@ func soleWinner(scores []int, seat int) bool {
 	return true
 }
 
-//line bot.w:547
+//line bot/bot.w:592
 func TestGreedyBeatsRandom(t *testing.T) {
 	const N = 300
 	gWins, rWins, ties := 0, 0, 0
@@ -48,7 +48,7 @@ func TestGreedyBeatsRandom(t *testing.T) {
 	}
 }
 
-//line bot.w:584
+//line bot/bot.w:629
 func TestArenaMultiplayer(t *testing.T) {
 	const N = 300
 	for _, n := range []int{3, 4} {
@@ -77,9 +77,9 @@ func TestArenaMultiplayer(t *testing.T) {
 	}
 }
 
-//line bot.w:615
+//line bot/bot.w:662
 func TestTradingRaisesScores(t *testing.T) {
-	for _, n := range []int{2, 3, 4} {
+	for _, n := range []int{3, 4} {
 		cautious := avgScore(t, n, false)
 		trading := avgScore(t, n, true)
 		t.Logf("%d인: 비거래 평균 %.2f → 거래 평균 %.2f",
@@ -91,7 +91,14 @@ func TestTradingRaisesScores(t *testing.T) {
 	}
 }
 
-//line bot.w:630
+//line bot/bot.w:678
+func TestDuelHasNoTrading(t *testing.T) {
+	if a, b := avgScore(t, 2, false), avgScore(t, 2, true); a != b {
+		t.Errorf("2인 결투에 거래가 스몄다: 비거래 %.4f, 거래 %.4f", a, b)
+	}
+}
+
+//line bot/bot.w:686
 func avgScore(t *testing.T, n int, trade bool) float64 {
 	const N = 200
 	total := 0
@@ -115,29 +122,44 @@ func avgScore(t *testing.T, n int, trade bool) float64 {
 	return float64(total) / float64(N*n)
 }
 
-//line bot.w:657
+//line bot/bot.w:713
 func TestTradingVsCautious(t *testing.T) {
-	const N = 300
-	tWins, cWins, ties := 0, 0, 0
+	const N = 400
+	wins, mine, theirs := 0, 0, 0
 	for seed := uint64(0); seed < N; seed++ {
-		for tSeat := 0; tSeat < 2; tSeat++ {
-			ps := make([]Policy, 2)
-			ps[tSeat] = NewGreedy()
-			ps[1-tSeat] = NewCautious()
-			scores, err := Play(ps, seed)
-			if err != nil {
-				t.Fatal(err)
-			}
-			switch t2, c := scores[tSeat], scores[1-tSeat]; {
-			case t2 > c:
-				tWins++
-			case t2 < c:
-				cWins++
-			default:
-				ties++
+		ps := make([]Policy, 4)
+		for i := range ps {
+			ps[i] = NewCautious()
+		}
+		seat := int(seed) % 4
+		ps[seat] = NewGreedy()
+		scores, err := Play(ps, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+//line bot/bot.w:733
+		if soleWinner(scores, seat) {
+			wins++
+		}
+		for i, sc := range scores {
+			if i == seat {
+				mine += sc
+			} else {
+				theirs += sc
 			}
 		}
+
+//line bot/bot.w:728
 	}
-	t.Logf("거래 봇 %d승 / 비거래 봇 %d승 / 무승부 %d (총 %d판)",
-		tWins, cWins, ties, 2*N)
+
+//line bot/bot.w:751
+	mineAvg, theirsAvg := float64(mine)/N, float64(theirs)/(3*N)
+	t.Logf("거래 봇 평균 %.2f, 비거래 봇 평균 %.2f, 거래 봇 승률 %.1f%%(공정 몫 25%%)",
+		mineAvg, theirsAvg, 100*float64(wins)/N)
+	if mineAvg <= theirsAvg {
+		t.Errorf("거래 봇이 비거래 봇보다 점수가 낮음: %.2f 대 %.2f", mineAvg, theirsAvg)
+	}
+
+//line bot/bot.w:730
 }

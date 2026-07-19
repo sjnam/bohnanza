@@ -1,4 +1,4 @@
-//line bot.w:31
+//line bot/bot.w:31
 package bot
 
 import (
@@ -8,19 +8,19 @@ import (
 	bz "github.com/sjnam/bohnanza"
 )
 
-//line bot.w:57
+//line bot/bot.w:58
 type Policy interface {
 	Act(v bz.View, rng *rand.Rand) bz.Action
 }
 
-//line bot.w:64
+//line bot/bot.w:65
 type Random struct{}
 
 func (Random) Act(v bz.View, rng *rand.Rand) bz.Action {
 	return v.Legal[rng.IntN(len(v.Legal))]
 }
 
-//line bot.w:75
+//line bot/bot.w:76
 type Greedy struct {
 	trade  bool
 	budget int
@@ -28,10 +28,10 @@ type Greedy struct {
 
 func NewGreedy() *Greedy { return &Greedy{trade: true} }
 
-//line bot.w:81
+//line bot/bot.w:82
 func NewCautious() *Greedy { return &Greedy{trade: false} }
 
-//line bot.w:87
+//line bot/bot.w:88
 func (g *Greedy) Act(v bz.View, rng *rand.Rand) bz.Action {
 	switch v.Stage {
 	case bz.PhasePlant:
@@ -44,11 +44,15 @@ func (g *Greedy) Act(v bz.View, rng *rand.Rand) bz.Action {
 		return g.tradeMove(v)
 	case bz.PhaseHarvestGifts:
 		return giftMove(v)
+	case bz.PhaseOffer:
+		return offerMove(v)
+	case bz.PhaseDuelDraw:
+		return duelDrawMove(v)
 	}
 	return v.Legal[0]
 }
 
-//line bot.w:112
+//line bot/bot.w:117
 func ripe(f bz.FieldView) bool {
 	if f.Count == 0 {
 		return false
@@ -57,7 +61,7 @@ func ripe(f bz.FieldView) bool {
 	return c >= 1 && c == f.Crop.Coins(f.Count+50)
 }
 
-//line bot.w:124
+//line bot/bot.w:129
 func bestField(me bz.PlayerView, b bz.Bean) (int, bool) {
 	best := -1
 	for i, f := range me.Fields {
@@ -78,7 +82,7 @@ func bestField(me bz.PlayerView, b bz.Bean) (int, bool) {
 	return -1, false
 }
 
-//line bot.w:149
+//line bot/bot.w:154
 func bestHarvest(v bz.View) (bz.Action, bool) {
 	me := v.Players[v.You]
 	var best bz.Action
@@ -96,20 +100,20 @@ func bestHarvest(v bz.View) (bz.Action, bool) {
 	return best, ok
 }
 
-//line bot.w:172
+//line bot/bot.w:177
 func plantMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
 
-//line bot.w:184
+//line bot/bot.w:189
 	if a, ok := pick(v.Legal, func(a bz.Action) bool {
 		return a.Kind == bz.Harvest && ripe(me.Fields[a.FieldNo])
 	}); ok {
 		return a
 	}
 
-//line bot.w:175
+//line bot/bot.w:180
 
-//line bot.w:193
+//line bot/bot.w:198
 	if me.Coins >= 3 && len(me.Fields) == 2 {
 		if a, ok := pick(v.Legal, func(a bz.Action) bool {
 			return a.Kind == bz.BuyField
@@ -118,9 +122,9 @@ func plantMove(v bz.View) bz.Action {
 		}
 	}
 
-//line bot.w:176
+//line bot/bot.w:181
 
-//line bot.w:207
+//line bot/bot.w:212
 	canEnd := hasKind(v.Legal, bz.EndPhase)
 	if len(me.Hand) > 0 {
 		b := me.Hand[0]
@@ -141,24 +145,24 @@ func plantMove(v bz.View) bz.Action {
 		}
 	}
 
-//line bot.w:177
+//line bot/bot.w:182
 	return endOr(v)
 }
 
-//line bot.w:235
+//line bot/bot.w:240
 func (g *Greedy) tradeMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
 
-//line bot.w:184
+//line bot/bot.w:189
 	if a, ok := pick(v.Legal, func(a bz.Action) bool {
 		return a.Kind == bz.Harvest && ripe(me.Fields[a.FieldNo])
 	}); ok {
 		return a
 	}
 
-//line bot.w:238
+//line bot/bot.w:243
 
-//line bot.w:247
+//line bot/bot.w:252
 	if a, ok := pick(v.Legal, func(a bz.Action) bool {
 		if a.Kind != bz.TakeRevealed {
 			return false
@@ -169,18 +173,18 @@ func (g *Greedy) tradeMove(v bz.View) bz.Action {
 		return a
 	}
 
-//line bot.w:239
+//line bot/bot.w:244
 
-//line bot.w:271
+//line bot/bot.w:276
 	if a, ok := pick(v.Legal, func(a bz.Action) bool {
 		return a.Kind == bz.TakeRevealed && me.Fields[a.FieldNo].Count == 0
 	}); ok {
 		return a
 	}
 
-//line bot.w:240
+//line bot/bot.w:245
 
-//line bot.w:261
+//line bot/bot.w:266
 	if g.trade && g.budget > 0 {
 		if a, ok := proposeTrade(v); ok {
 			g.budget--
@@ -188,20 +192,20 @@ func (g *Greedy) tradeMove(v bz.View) bz.Action {
 		}
 	}
 
-//line bot.w:241
+//line bot/bot.w:246
 
-//line bot.w:281
+//line bot/bot.w:286
 	if len(v.FaceUp) > 0 {
 		if a, ok := bestHarvest(v); ok {
 			return a
 		}
 	}
 
-//line bot.w:242
+//line bot/bot.w:247
 	return endOr(v)
 }
 
-//line bot.w:294
+//line bot/bot.w:299
 func proposeTrade(v bz.View) (bz.Action, bool) {
 	me := v.Players[v.You]
 	for _, b := range v.FaceUp {
@@ -213,7 +217,7 @@ func proposeTrade(v bz.View) (bz.Action, bool) {
 			continue // 아무도 안 기르는 콩은 넘길 데가 없다
 		}
 
-//line bot.w:313
+//line bot/bot.w:318
 		if r, want := requestBean(me, v.Players[o]); want {
 			return bz.Action{Kind: bz.ProposeTrade, Actor: v.You, To: o,
 				GiveFaceUp: []bz.Bean{b}, GetHand: []bz.Bean{r}}, true
@@ -221,12 +225,12 @@ func proposeTrade(v bz.View) (bz.Action, bool) {
 		return bz.Action{Kind: bz.ProposeTrade, Actor: v.You, To: o,
 			GiveFaceUp: []bz.Bean{b}}, true
 
-//line bot.w:305
+//line bot/bot.w:310
 	}
 	return bz.Action{}, false
 }
 
-//line bot.w:323
+//line bot/bot.w:328
 func wanter(v bz.View, b bz.Bean) int {
 	for i, p := range v.Players {
 		if i != v.You && matchesField(p, b) {
@@ -236,7 +240,7 @@ func wanter(v bz.View, b bz.Bean) int {
 	return -1
 }
 
-//line bot.w:336
+//line bot/bot.w:341
 func requestBean(me, opp bz.PlayerView) (bz.Bean, bool) {
 	var best bz.Bean
 	bn, ok := -1, false
@@ -251,7 +255,7 @@ func requestBean(me, opp bz.PlayerView) (bz.Bean, bool) {
 	return best, ok
 }
 
-//line bot.w:355
+//line bot/bot.w:360
 func respondMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
 	accept := worthAccepting(me, v.Pending)
@@ -263,7 +267,7 @@ func respondMove(v bz.View) bz.Action {
 	return v.Legal[0]
 }
 
-//line bot.w:370
+//line bot/bot.w:375
 func worthAccepting(me bz.PlayerView, pr *bz.ProposalView) bool {
 	give := pr.GetHand // 내가 손패에서 내주는 콩
 	if !holds(me.Hand, give) {
@@ -274,7 +278,7 @@ func worthAccepting(me bz.PlayerView, pr *bz.ProposalView) bool {
 	return gain > loss
 }
 
-//line bot.w:383
+//line bot/bot.w:388
 func countMatching(me bz.PlayerView, bs []bz.Bean) int {
 	n := 0
 	for _, b := range bs {
@@ -285,18 +289,18 @@ func countMatching(me bz.PlayerView, bs []bz.Bean) int {
 	return n
 }
 
-//line bot.w:398
+//line bot/bot.w:403
 func giftMove(v bz.View) bz.Action {
 	me := v.Players[v.You]
 
-//line bot.w:184
+//line bot/bot.w:189
 	if a, ok := pick(v.Legal, func(a bz.Action) bool {
 		return a.Kind == bz.Harvest && ripe(me.Fields[a.FieldNo])
 	}); ok {
 		return a
 	}
 
-//line bot.w:401
+//line bot/bot.w:406
 	if len(me.Acquired) > 0 {
 		b := me.Acquired[0]
 		if f, ok := bestField(me, b); ok {
@@ -313,7 +317,81 @@ func giftMove(v bz.View) bz.Action {
 	return v.Legal[0]
 }
 
-//line bot.w:421
+//line bot/bot.w:433
+func offerMove(v bz.View) bz.Action {
+	me := v.Players[v.You]
+
+//line bot/bot.w:189
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		return a.Kind == bz.Harvest && ripe(me.Fields[a.FieldNo])
+	}); ok {
+		return a
+	}
+
+//line bot/bot.w:436
+
+//line bot/bot.w:252
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		if a.Kind != bz.TakeRevealed {
+			return false
+		}
+		f := me.Fields[a.FieldNo]
+		return f.Count > 0 && f.Crop == v.FaceUp[a.FaceUpNo]
+	}); ok {
+		return a
+	}
+
+//line bot/bot.w:437
+
+//line bot/bot.w:276
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		return a.Kind == bz.TakeRevealed && me.Fields[a.FieldNo].Count == 0
+	}); ok {
+		return a
+	}
+
+//line bot/bot.w:438
+
+//line bot/bot.w:443
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		return a.Kind == bz.TossRevealed
+	}); ok {
+		return a
+	}
+
+//line bot/bot.w:439
+	return v.Legal[0]
+}
+
+//line bot/bot.w:455
+func duelDrawMove(v bz.View) bz.Action {
+	me := v.Players[v.You]
+
+//line bot/bot.w:189
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		return a.Kind == bz.Harvest && ripe(me.Fields[a.FieldNo])
+	}); ok {
+		return a
+	}
+
+//line bot/bot.w:458
+
+//line bot/bot.w:252
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		if a.Kind != bz.TakeRevealed {
+			return false
+		}
+		f := me.Fields[a.FieldNo]
+		return f.Count > 0 && f.Crop == v.FaceUp[a.FaceUpNo]
+	}); ok {
+		return a
+	}
+
+//line bot/bot.w:459
+	return endOr(v)
+}
+
+//line bot/bot.w:466
 func pick(legal []bz.Action, want func(bz.Action) bool) (bz.Action, bool) {
 	for _, a := range legal {
 		if want(a) {
@@ -328,7 +406,7 @@ func hasKind(legal []bz.Action, k bz.ActionKind) bool {
 	return ok
 }
 
-//line bot.w:438
+//line bot/bot.w:483
 func endOr(v bz.View) bz.Action {
 	if a, ok := pick(v.Legal, func(a bz.Action) bool {
 		return a.Kind == bz.EndPhase
@@ -338,7 +416,7 @@ func endOr(v bz.View) bz.Action {
 	return v.Legal[0]
 }
 
-//line bot.w:450
+//line bot/bot.w:495
 func matchesField(me bz.PlayerView, b bz.Bean) bool {
 	for _, f := range me.Fields {
 		if f.Count > 0 && f.Crop == b {
@@ -348,7 +426,7 @@ func matchesField(me bz.PlayerView, b bz.Bean) bool {
 	return false
 }
 
-//line bot.w:462
+//line bot/bot.w:507
 func holds(pool, want []bz.Bean) bool {
 	cnt := make(map[bz.Bean]int)
 	for _, b := range pool {
@@ -365,8 +443,8 @@ func holds(pool, want []bz.Bean) bool {
 
 // 한 판에 드는 수의 상한. 2인부터 4인까지 실측 최대가 800수 남짓이니 넉넉하다.
 //
-//line bot.w:482
-//line bot.w:483
+//line bot/bot.w:527
+//line bot/bot.w:528
 const maxSteps = 100000
 
 func Play(ps []Policy, seed uint64) ([]int, error) {
@@ -387,12 +465,12 @@ func Play(ps []Policy, seed uint64) ([]int, error) {
 		}
 	}
 
-//line bot.w:511
+//line bot/bot.w:556
 	if !s.Over() {
 		return nil, fmt.Errorf("판이 %d수에서 끝나지 않음(씨앗 %d, 단계 %v)",
 			step, seed, s.Stage)
 	}
 
-//line bot.w:503
+//line bot/bot.w:548
 	return s.Scores(), nil
 }
