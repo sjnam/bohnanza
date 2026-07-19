@@ -52,6 +52,7 @@ import (
 @<턴 넘기기@>@;
 @<액션@>@;
 @<합법수 열거@>@;
+@<이벤트@>@;
 @<액션 적용@>@;
 @<점수와 불변식@>@;
 @<플레이어 뷰@>@;
@@ -674,14 +675,136 @@ func (s *State) legalGifts(player int) []Action {
 	return acts
 }
 
+@* 이벤트.
+|Apply|는 무슨 일이 있었는지 이벤트로 알린다. 이벤트는 한때 완성된 한국어
+문장이었다. 편하기는 했으나, 규칙만 알아야 할 엔진이 화면에 쓸 말까지 짓는
+셈이라 이 프로그램이 내세운 경계를 스스로 허무는 자리였다. 게다가 문장에 박힌
+것은 되돌릴 수 없다: 엔진은 참가자 이름을 모르니 ``0번 플레이어''라고 적을
+수밖에 없고, 이름을 아는 클라이언트도 문자열을 헤집지 않고는 고칠 도리가 없다.
+
+그래서 이벤트는 이제 {\it 무슨 일이 있었는지를 값으로\/} 나른다. 문장 만들기는
+그릴 줄 아는 쪽---이름도 알고 글꼴도 고를 수 있는 클라이언트---의 몫이다.
+@s EventKind int
+@s Event int
+@<이벤트@>=
+type EventKind string
+
+@ 열두 가지 일이 일어난다. 문자열을 값으로 삼아, \.{JSON}으로 나가도 숫자가
+아니라 제 이름이 보이게 했다---|curl|로 스트림을 들여다볼 때나 클라이언트에서
+갈래를 나눌 때나, 뜻이 그대로 드러나는 편이 낫다.
+@<이벤트@>=
+const (
+	Planted       EventKind = "planted"       // 손패 맨 앞 카드를 밭에 심음
+	PlantedFaceUp EventKind = "plantedFaceUp" // 공개 카드를 밭에 심음
+	PlantedGift   EventKind = "plantedGift"   // 거래로 받은 콩을 밭에 심음
+	Harvested     EventKind = "harvested"     // 밭을 거두어 코인을 얻음
+	BoughtField   EventKind = "boughtField"   // 세 번째 밭을 삼
+	Revealed      EventKind = "revealed"      // 덱에서 공개 카드가 뒤집힘
+	DeckEmptied   EventKind = "deckEmptied"   // 덱이 바닥나 게임이 끝남
+	GiftStage     EventKind = "giftStage"     // 받은 콩을 심는 단계로 넘어감
+	TurnPassed    EventKind = "turnPassed"    // 턴을 넘김
+	TradeProposed EventKind = "tradeProposed" // 거래를 제안
+	TradeRejected EventKind = "tradeRejected" // 제안을 거절
+	TradeAccepted EventKind = "tradeAccepted" // 교환 성사
+)
+
+@ 한 이벤트가 나르는 값이다. 갈래마다 쓰는 칸이 다르다---심기는 |Crop|과
+|FieldNo|를, 거두기는 |Coins|를, 거래는 |To|와 두 콩 목록을 쓴다. 읽는 쪽은
+|Kind|를 보고 제게 필요한 칸만 집으면 된다. 사람이 일으키지 않은 일(공개 카드가
+뒤집히는 것 따위)은 |Actor|가 |NoActor|다.
+@<이벤트@>=
+const NoActor = -1
+
+type Event struct {
+	Kind    EventKind `json:"kind"`
+	Actor   int       `json:"actor"`          // 이 일을 한 사람
+	To      int       `json:"to"`             // 거래 상대
+	Crop    Bean      `json:"bean"`           // 이 일에 걸린 콩
+	FieldNo int       `json:"field"`          // 심거나 거둔 밭 번호
+	Coins   int       `json:"coins"`          // 거두어 얻은 코인
+	Give    []Card    `json:"give,omitempty"` // 제안자가 내주는 콩
+	Get     []Card    `json:"get,omitempty"`  // 제안자가 받는 콩
+}
+
+@ 그래도 터미널처럼 단출한 곳을 위해 기본 문장 하나는 마련해 둔다. 이것은
+{\it 편의\/}일 뿐 유일한 표현이 아니다---웹은 이 메서드를 쓰지 않고 이름과
+꾸밈을 얹어 제 손으로 그린다. 엔진이 이름을 모르므로 여기서는 자리 번호로
+적는다.
+@<이벤트@>=
+func (e Event) String() string {
+	switch e.Kind {
+	@<갈래마다 기본 문장을 짓는다@>@;
+	}
+	return string(e.Kind)
+}
+
+@ @<갈래마다 기본 문장을 짓는다@>=
+case Planted, PlantedFaceUp, PlantedGift:
+	return fmt.Sprintf("%d번이 %s%s %d번 밭에 심음", e.Actor,
+		e.Crop.Name(), objectParticle(e.Crop.Name()), e.FieldNo)
+case Harvested:
+	return fmt.Sprintf("%d번이 %s 밭을 거둬 코인 %d개 얻음",
+		e.Actor, e.Crop.Name(), e.Coins)
+case BoughtField:
+	return fmt.Sprintf("%d번이 세 번째 밭을 삼", e.Actor)
+case Revealed:
+	return fmt.Sprintf("공개 카드로 %s%s 뒤집힘",
+		e.Crop.Name(), subjectParticle(e.Crop.Name()))
+
+@ 거래와 흐름에 관한 갈래다.
+@<갈래마다 기본 문장을 짓는다@>=
+case TradeProposed:
+	return fmt.Sprintf("%d번이 %d번에게 [%s] 주고 [%s] 받기를 제안",
+		e.Actor, e.To, beanNames(e.Give), beanNames(e.Get))
+case TradeRejected:
+	return fmt.Sprintf("%d번이 제안을 거절", e.Actor)
+case TradeAccepted:
+	return fmt.Sprintf("%d번과 %d번이 [%s] 주고 [%s] 받아 교환 성사",
+		e.Actor, e.To, beanNames(e.Give), beanNames(e.Get))
+case DeckEmptied:
+	return "덱이 바닥나 게임이 끝남"
+case GiftStage:
+	return "받은 콩을 심는 단계로"
+case TurnPassed:
+	return "턴을 넘김"
+
+@ 조사는 앞말의 받침을 따라 갈린다. 한글 음절은 |0xAC00|부터 스물여덟 개씩
+묶여 있어, 그 나머지가 $0$이면 받침이 없다. 콩 이름은 모두 ``콩''으로 끝나
+받침이 있으니 늘 ``을''과 ``이''가 나오지만, 규칙으로 적어 두면 이름을 늘려도
+문장이 어긋나지 않는다. (예전에는 |%s를|과 |%s가|를 박아 두어 ``커피콩를''이나
+``고추콩가''라고 적었다.)
+@<이벤트@>=
+func hasFinal(name string) bool {
+	r := []rune(name)
+	if len(r) == 0 {
+		return false
+	}
+	last := r[len(r)-1]
+	if last < 0xAC00 || last > 0xD7A3 {
+		return false // 한글 음절이 아니다
+	}
+	return (last-0xAC00)%28 != 0
+}
+@#
+func objectParticle(name string) string {
+	if hasFinal(name) {
+		return "을"
+	}
+	return "를"
+}
+@#
+func subjectParticle(name string) string {
+	if hasFinal(name) {
+		return "이"
+	}
+	return "가"
+}
+
 @* 액션 적용.
 |Apply|는 수 하나를 받아 상태를 옮기고, 무슨 일이 있었는지 이벤트로 알린다.
 불법이면 상태를 그대로 두고 오류를 돌려준다. 먼저 게임이 끝났는지와 지금이
 행위자의 차례인지 확인한 뒤, 종류별 처리로 나눈다.
-@s Event int
 @<액션 적용@>=
-type Event = string
-
 func (s *State) Apply(a Action) ([]Event, error) {
 	if s.Stage == GameOver {
 		return nil, fmt.Errorf("보난자: 게임이 이미 끝남")
@@ -730,8 +853,8 @@ func (s *State) applyPlantFront(a Action) ([]Event, error) {
 	}
 	p.Hand = p.Hand[1:]
 	s.PlantCount++
-	return []Event{fmt.Sprintf("%d번 플레이어가 %s를 %d번 밭에 심음",
-		a.Actor, b.Name(), a.FieldNo)}, nil
+	return []Event{{Kind: Planted, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo}}, nil
 }
 
 @ 밭 거두기. 거둔 코인 수를 이벤트로 알린다.
@@ -743,8 +866,8 @@ func (s *State) applyHarvest(a Action) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []Event{fmt.Sprintf("%d번 플레이어가 %s 밭을 거둬 코인 %d개 얻음",
-		a.Actor, b.Name(), coins)}, nil
+	return []Event{{Kind: Harvested, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo, Coins: coins}}, nil
 }
 
 @ 세 번째 밭 사기. 코인 세 장을 게임 밖으로 치우고 밭 한 칸을 늘린다.
@@ -761,7 +884,7 @@ func (s *State) applyBuyField(a Action) ([]Event, error) {
 	s.Removed = append(s.Removed, p.Treasury[n-3:]...)
 	p.Treasury = p.Treasury[:n-3]
 	p.Fields = append(p.Fields, Field{})
-	return []Event{fmt.Sprintf("%d번 플레이어가 세 번째 밭을 삼", a.Actor)}, nil
+	return []Event{{Kind: BoughtField, Actor: a.Actor, To: NoActor}}, nil
 }
 
 @ 심기 단계 끝내기. 아직 한 장도 안 심었고 손패가 남았다면 거절한다.
@@ -788,10 +911,12 @@ func (s *State) flipAndTrade() ([]Event, error) {
 	for i := 0; i < 2; i++ {
 		c, ok := s.draw()
 		if !s.endIfEmpty(ok) {
-			return append(ev, "덱이 바닥나 게임이 끝남"), nil
+			return append(ev, Event{Kind: DeckEmptied,
+				Actor: NoActor, To: NoActor}), nil
 		}
 		s.FaceUp = append(s.FaceUp, c)
-		ev = append(ev, fmt.Sprintf("공개 카드로 %s가 뒤집힘", c.Name()))
+		ev = append(ev, Event{Kind: Revealed,
+			Actor: NoActor, To: NoActor, Crop: c})
 	}
 	s.Stage = PhaseTrade
 	return ev, nil
@@ -806,10 +931,10 @@ func (s *State) endTradePhase() ([]Event, error) {
 	}
 	if s.giftsPending() {
 		s.Stage = PhaseHarvestGifts
-		return []Event{"받은 콩을 심는 단계로"}, nil
+		return []Event{{Kind: GiftStage, Actor: NoActor, To: NoActor}}, nil
 	}
 	s.endTurn()
-	return []Event{"턴을 넘김"}, nil
+	return []Event{{Kind: TurnPassed, Actor: NoActor, To: NoActor}}, nil
 }
 
 @ 공개 카드를 집어 내 밭에 심고, 공개 더미에서 뺀다. 동의가 필요 없는, 활성
@@ -825,8 +950,8 @@ func (s *State) applyTake(a Action) ([]Event, error) {
 		return nil, err
 	}
 	s.FaceUp = removeCard(s.FaceUp, a.FaceUpNo)
-	return []Event{fmt.Sprintf("%d번 플레이어가 공개된 %s를 %d번 밭에 심음",
-		a.Actor, b.Name(), a.FieldNo)}, nil
+	return []Event{{Kind: PlantedFaceUp, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo}}, nil
 }
 
 @ 거래 제안. 활성 플레이어가 상대에게 ``이 콩들을 줄 테니 저 콩들을 달라''고
@@ -850,8 +975,8 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 		GiveFaceUp: append([]Card{}, a.GiveFaceUp...),
 		GetHand:    append([]Card{}, a.GetHand...)}
 	give := append(append([]Card{}, a.GiveHand...), a.GiveFaceUp...)
-	return []Event{fmt.Sprintf("%d번이 %d번에게 [%s] 주고 [%s] 받기를 제안",
-		s.Active, a.To, beanNames(give), beanNames(a.GetHand))}, nil
+	return []Event{{Kind: TradeProposed, Actor: s.Active, To: a.To,
+		Give: give, Get: append([]Card{}, a.GetHand...)}}, nil
 }
 
 @ 내가 내주는 두 더미가 각각 제자리(내 손패, 공개 카드)에 다중집합으로 들어
@@ -875,7 +1000,7 @@ func (s *State) applyRespond(a Action) ([]Event, error) {
 	}
 	if !a.Accept {
 		s.Pending = nil
-		return []Event{fmt.Sprintf("%d번이 제안을 거절", a.Actor)}, nil
+		return []Event{{Kind: TradeRejected, Actor: a.Actor, To: NoActor}}, nil
 	}
 	@<제안대로 카드를 옮긴다@>@;
 }
@@ -901,8 +1026,8 @@ to.Acquired = append(to.Acquired, pr.GiveFaceUp...)
 from.Acquired = append(from.Acquired, pr.GetHand...)
 s.Pending = nil
 give := append(append([]Card{}, pr.GiveHand...), pr.GiveFaceUp...)
-return []Event{fmt.Sprintf("%d번과 %d번이 [%s] 주고 [%s] 받아 교환 성사",
-	pr.From, pr.To, beanNames(give), beanNames(pr.GetHand))}, nil
+return []Event{{Kind: TradeAccepted, Actor: pr.From, To: pr.To,
+	Give: give, Get: append([]Card{}, pr.GetHand...)}}, nil
 
 @ 두 다중집합 도우미다. |containsAll|은 |pool|이 |want|를 개수까지 담는지 보고,
 |removeBeans|는 |pool|에서 |drop|의 콩을 값으로 하나씩 빼낸다.
@@ -944,11 +1069,11 @@ func (s *State) applyPlantGift(a Action) ([]Event, error) {
 		return nil, err
 	}
 	p.Acquired = p.Acquired[1:]
-	ev := []Event{fmt.Sprintf("%d번 플레이어가 받은 %s를 %d번 밭에 심음",
-		a.Actor, b.Name(), a.FieldNo)}
+	ev := []Event{{Kind: PlantedGift, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo}}
 	if !s.giftsPending() {
 		s.endTurn()
-		ev = append(ev, "턴을 넘김")
+		ev = append(ev, Event{Kind: TurnPassed, Actor: NoActor, To: NoActor})
 	}
 	return ev, nil
 }

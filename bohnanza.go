@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-//line bohnanza.w:73
+//line bohnanza.w:74
 type Bean int
 
 const (
@@ -25,12 +25,12 @@ const (
 	Cocoa
 	NumBeans
 
-//line bohnanza.w:88
+//line bohnanza.w:89
 )
 
 type Card = Bean // |Card|는 콩 한 알과 같다.
 
-//line bohnanza.w:95
+//line bohnanza.w:96
 type BeanInfo struct {
 	Name  string
 	Count int    // 덱에 들어가는 장수
@@ -53,7 +53,7 @@ var beanTable = [NumBeans]BeanInfo{
 
 const TotalCards = 154 // 덱 전체 장수(154)다.
 
-//line bohnanza.w:121
+//line bohnanza.w:122
 func (b Bean) Name() string { return beanTable[b].Name }
 
 func (b Bean) Coins(n int) int {
@@ -66,7 +66,7 @@ func (b Bean) Coins(n int) int {
 	return c
 }
 
-//line bohnanza.w:146
+//line bohnanza.w:147
 type Field struct {
 	Crop  Bean // 이 밭에서 자라는 콩(작물)
 	Count int
@@ -83,7 +83,7 @@ type Player struct {
 
 func (p *Player) Coins() int { return len(p.Treasury) }
 
-//line bohnanza.w:167
+//line bohnanza.w:168
 type Phase int
 
 const (
@@ -92,10 +92,10 @@ const (
 	PhaseHarvestGifts              // 받은 콩 심기
 	GameOver
 
-//line bohnanza.w:174
+//line bohnanza.w:175
 )
 
-//line bohnanza.w:178
+//line bohnanza.w:179
 func (p Phase) String() string {
 	switch p {
 	case PhasePlant:
@@ -108,7 +108,7 @@ func (p Phase) String() string {
 	return "종료"
 }
 
-//line bohnanza.w:195
+//line bohnanza.w:196
 type State struct {
 	Players    []*Player
 	Deck       []Card
@@ -124,7 +124,7 @@ type State struct {
 	rng *rand.Rand
 }
 
-//line bohnanza.w:215
+//line bohnanza.w:216
 type Proposal struct {
 	From       int
 	To         int
@@ -133,7 +133,7 @@ type Proposal struct {
 	GetHand    []Card // To가 손패에서 내주는 콩
 }
 
-//line bohnanza.w:227
+//line bohnanza.w:228
 const StartingHand = 5
 
 func New(numPlayers int, seed uint64) (*State, error) {
@@ -142,7 +142,7 @@ func New(numPlayers int, seed uint64) (*State, error) {
 	}
 	s := &State{rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
 
-//line bohnanza.w:241
+//line bohnanza.w:242
 	for b := Bean(0); b < NumBeans; b++ {
 		for i := 0; i < beanTable[b].Count; i++ {
 			s.Deck = append(s.Deck, b)
@@ -152,9 +152,9 @@ func New(numPlayers int, seed uint64) (*State, error) {
 		s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i]
 	})
 
-//line bohnanza.w:235
+//line bohnanza.w:236
 
-//line bohnanza.w:252
+//line bohnanza.w:253
 	for i := 0; i < numPlayers; i++ {
 		s.Players = append(s.Players, &Player{Fields: make([]Field, 2)})
 	}
@@ -165,11 +165,11 @@ func New(numPlayers int, seed uint64) (*State, error) {
 		}
 	}
 
-//line bohnanza.w:236
+//line bohnanza.w:237
 	return s, nil
 }
 
-//line bohnanza.w:267
+//line bohnanza.w:268
 func (s *State) draw() (Card, bool) {
 	if len(s.Deck) == 0 {
 		s.Exhaust++
@@ -186,7 +186,7 @@ func (s *State) draw() (Card, bool) {
 	return c, true
 }
 
-//line bohnanza.w:286
+//line bohnanza.w:287
 func (s *State) endIfEmpty(ok bool) bool {
 	if !ok {
 		s.Stage = GameOver
@@ -194,7 +194,7 @@ func (s *State) endIfEmpty(ok bool) bool {
 	return ok
 }
 
-//line bohnanza.w:298
+//line bohnanza.w:299
 func (s *State) plant(p *Player, field int, b Bean) error {
 	if field < 0 || field >= len(p.Fields) {
 		return fmt.Errorf("보난자: 밭 번호 %d가 범위를 벗어남", field)
@@ -211,7 +211,7 @@ func (s *State) plant(p *Player, field int, b Bean) error {
 	return nil
 }
 
-//line bohnanza.w:319
+//line bohnanza.w:320
 func (p *Player) canHarvest(field int) bool {
 	f := p.Fields[field]
 	if f.Count == 0 {
@@ -227,7 +227,7 @@ func (p *Player) canHarvest(field int) bool {
 	return true
 }
 
-//line bohnanza.w:343
+//line bohnanza.w:344
 func (s *State) harvest(p *Player, field int) (int, error) {
 	if field < 0 || field >= len(p.Fields) {
 		return 0, fmt.Errorf("보난자: 밭 번호 %d가 범위를 벗어남", field)
@@ -247,7 +247,7 @@ func (s *State) harvest(p *Player, field int) (int, error) {
 	return coins, nil
 }
 
-//line bohnanza.w:367
+//line bohnanza.w:368
 func (s *State) endTurn() {
 	p := s.Players[s.Active]
 	for i := 0; i < 3; i++ {
@@ -262,7 +262,7 @@ func (s *State) endTurn() {
 	s.PlantCount = 0
 }
 
-//line bohnanza.w:386
+//line bohnanza.w:387
 func (s *State) ToAct() int {
 	switch s.Stage {
 	case PhasePlant:
@@ -282,7 +282,7 @@ func (s *State) ToAct() int {
 	return -1
 }
 
-//line bohnanza.w:407
+//line bohnanza.w:408
 func (s *State) giftsPending() bool {
 	for i := range s.Players {
 		if len(s.Players[i].Acquired) > 0 {
@@ -292,7 +292,7 @@ func (s *State) giftsPending() bool {
 	return false
 }
 
-//line bohnanza.w:424
+//line bohnanza.w:425
 type ActionKind int
 
 const (
@@ -321,7 +321,7 @@ type Action struct {
 	Accept bool `json:"accept,omitempty"` // |RespondTrade|용: 수락 여부
 }
 
-//line bohnanza.w:454
+//line bohnanza.w:455
 func (a Action) String() string {
 	switch a.Kind {
 	case PlantFront:
@@ -347,7 +347,7 @@ func (a Action) String() string {
 	return "알 수 없는 수"
 }
 
-//line bohnanza.w:482
+//line bohnanza.w:483
 func beanNames(cs []Card) string {
 	if len(cs) == 0 {
 		return "없음"
@@ -365,7 +365,7 @@ func (a Action) tradeString() string {
 		a.To, beanNames(give), beanNames(a.GetHand))
 }
 
-//line bohnanza.w:504
+//line bohnanza.w:505
 func (s *State) Legal(player int) []Action {
 	if s.Stage == GameOver || player != s.ToAct() {
 		return nil
@@ -384,7 +384,7 @@ func (s *State) Legal(player int) []Action {
 	return nil
 }
 
-//line bohnanza.w:527
+//line bohnanza.w:528
 func (s *State) legalPlant(player int) []Action {
 	p := s.Players[player]
 	var acts []Action
@@ -406,7 +406,7 @@ func (s *State) legalPlant(player int) []Action {
 	return acts
 }
 
-//line bohnanza.w:551
+//line bohnanza.w:552
 func (s *State) harvestActions(player int) []Action {
 	p := s.Players[player]
 	var acts []Action
@@ -418,7 +418,7 @@ func (s *State) harvestActions(player int) []Action {
 	return acts
 }
 
-//line bohnanza.w:566
+//line bohnanza.w:567
 func (s *State) legalTrade(player int) []Action {
 	var acts []Action
 	for c := range s.FaceUp {
@@ -432,7 +432,7 @@ func (s *State) legalTrade(player int) []Action {
 	return acts
 }
 
-//line bohnanza.w:585
+//line bohnanza.w:586
 func (s *State) legalRespond(player int) []Action {
 	var acts []Action
 	if s.Pending != nil && containsAll(s.Players[player].Hand, s.Pending.GetHand) {
@@ -441,7 +441,7 @@ func (s *State) legalRespond(player int) []Action {
 	return append(acts, Action{Kind: RespondTrade, Actor: player, Accept: false})
 }
 
-//line bohnanza.w:595
+//line bohnanza.w:596
 func (s *State) takeActions(player, card int) []Action {
 	p := s.Players[player]
 	b := s.FaceUp[card]
@@ -454,7 +454,7 @@ func (s *State) takeActions(player, card int) []Action {
 	return acts
 }
 
-//line bohnanza.w:612
+//line bohnanza.w:613
 func (s *State) proposeActions(player int) []Action {
 	var acts []Action
 	mine := distinct(s.Players[player].Hand)
@@ -465,7 +465,7 @@ func (s *State) proposeActions(player int) []Action {
 		}
 		theirs := distinct(s.Players[to].Hand)
 
-//line bohnanza.w:629
+//line bohnanza.w:630
 		for _, gb := range mine {
 			for _, tb := range theirs {
 				acts = append(acts, Action{Kind: ProposeTrade, Actor: player, To: to,
@@ -483,12 +483,12 @@ func (s *State) proposeActions(player int) []Action {
 				GiveFaceUp: []Card{gb}})
 		}
 
-//line bohnanza.w:622
+//line bohnanza.w:623
 	}
 	return acts
 }
 
-//line bohnanza.w:649
+//line bohnanza.w:650
 func distinct(cs []Card) []Card {
 	seen := make(map[Card]bool)
 	var out []Card
@@ -501,7 +501,7 @@ func distinct(cs []Card) []Card {
 	return out
 }
 
-//line bohnanza.w:664
+//line bohnanza.w:665
 func (s *State) legalGifts(player int) []Action {
 	p := s.Players[player]
 	var acts []Action
@@ -515,9 +515,105 @@ func (s *State) legalGifts(player int) []Action {
 	return acts
 }
 
-//line bohnanza.w:683
-type Event = string
+//line bohnanza.w:690
+type EventKind string
 
+//line bohnanza.w:696
+const (
+	Planted       EventKind = "planted"       // 손패 맨 앞 카드를 밭에 심음
+	PlantedFaceUp EventKind = "plantedFaceUp" // 공개 카드를 밭에 심음
+	PlantedGift   EventKind = "plantedGift"   // 거래로 받은 콩을 밭에 심음
+	Harvested     EventKind = "harvested"     // 밭을 거두어 코인을 얻음
+	BoughtField   EventKind = "boughtField"   // 세 번째 밭을 삼
+	Revealed      EventKind = "revealed"      // 덱에서 공개 카드가 뒤집힘
+	DeckEmptied   EventKind = "deckEmptied"   // 덱이 바닥나 게임이 끝남
+	GiftStage     EventKind = "giftStage"     // 받은 콩을 심는 단계로 넘어감
+	TurnPassed    EventKind = "turnPassed"    // 턴을 넘김
+	TradeProposed EventKind = "tradeProposed" // 거래를 제안
+	TradeRejected EventKind = "tradeRejected" // 제안을 거절
+	TradeAccepted EventKind = "tradeAccepted" // 교환 성사
+)
+
+//line bohnanza.w:716
+const NoActor = -1
+
+type Event struct {
+	Kind    EventKind `json:"kind"`
+	Actor   int       `json:"actor"`          // 이 일을 한 사람
+	To      int       `json:"to"`             // 거래 상대
+	Crop    Bean      `json:"bean"`           // 이 일에 걸린 콩
+	FieldNo int       `json:"field"`          // 심거나 거둔 밭 번호
+	Coins   int       `json:"coins"`          // 거두어 얻은 코인
+	Give    []Card    `json:"give,omitempty"` // 제안자가 내주는 콩
+	Get     []Card    `json:"get,omitempty"`  // 제안자가 받는 콩
+}
+
+//line bohnanza.w:734
+func (e Event) String() string {
+	switch e.Kind {
+
+//line bohnanza.w:742
+	case Planted, PlantedFaceUp, PlantedGift:
+		return fmt.Sprintf("%d번이 %s%s %d번 밭에 심음", e.Actor,
+			e.Crop.Name(), objectParticle(e.Crop.Name()), e.FieldNo)
+	case Harvested:
+		return fmt.Sprintf("%d번이 %s 밭을 거둬 코인 %d개 얻음",
+			e.Actor, e.Crop.Name(), e.Coins)
+	case BoughtField:
+		return fmt.Sprintf("%d번이 세 번째 밭을 삼", e.Actor)
+	case Revealed:
+		return fmt.Sprintf("공개 카드로 %s%s 뒤집힘",
+			e.Crop.Name(), subjectParticle(e.Crop.Name()))
+
+//line bohnanza.w:756
+	case TradeProposed:
+		return fmt.Sprintf("%d번이 %d번에게 [%s] 주고 [%s] 받기를 제안",
+			e.Actor, e.To, beanNames(e.Give), beanNames(e.Get))
+	case TradeRejected:
+		return fmt.Sprintf("%d번이 제안을 거절", e.Actor)
+	case TradeAccepted:
+		return fmt.Sprintf("%d번과 %d번이 [%s] 주고 [%s] 받아 교환 성사",
+			e.Actor, e.To, beanNames(e.Give), beanNames(e.Get))
+	case DeckEmptied:
+		return "덱이 바닥나 게임이 끝남"
+	case GiftStage:
+		return "받은 콩을 심는 단계로"
+	case TurnPassed:
+		return "턴을 넘김"
+
+//line bohnanza.w:737
+	}
+	return string(e.Kind)
+}
+
+//line bohnanza.w:777
+func hasFinal(name string) bool {
+	r := []rune(name)
+	if len(r) == 0 {
+		return false
+	}
+	last := r[len(r)-1]
+	if last < 0xAC00 || last > 0xD7A3 {
+		return false // 한글 음절이 아니다
+	}
+	return (last-0xAC00)%28 != 0
+}
+
+func objectParticle(name string) string {
+	if hasFinal(name) {
+		return "을"
+	}
+	return "를"
+}
+
+func subjectParticle(name string) string {
+	if hasFinal(name) {
+		return "이"
+	}
+	return "가"
+}
+
+//line bohnanza.w:808
 func (s *State) Apply(a Action) ([]Event, error) {
 	if s.Stage == GameOver {
 		return nil, fmt.Errorf("보난자: 게임이 이미 끝남")
@@ -549,7 +645,7 @@ func (s *State) Apply(a Action) ([]Event, error) {
 	return nil, fmt.Errorf("보난자: 알 수 없는 액션")
 }
 
-//line bohnanza.w:719
+//line bohnanza.w:842
 func (s *State) applyPlantFront(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if s.PlantCount >= 2 {
@@ -564,11 +660,11 @@ func (s *State) applyPlantFront(a Action) ([]Event, error) {
 	}
 	p.Hand = p.Hand[1:]
 	s.PlantCount++
-	return []Event{fmt.Sprintf("%d번 플레이어가 %s를 %d번 밭에 심음",
-		a.Actor, b.Name(), a.FieldNo)}, nil
+	return []Event{{Kind: Planted, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo}}, nil
 }
 
-//line bohnanza.w:739
+//line bohnanza.w:862
 func (s *State) applyHarvest(a Action) ([]Event, error) {
 	p := s.Players[a.Actor]
 	b := p.Fields[a.FieldNo].Crop
@@ -576,11 +672,11 @@ func (s *State) applyHarvest(a Action) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []Event{fmt.Sprintf("%d번 플레이어가 %s 밭을 거둬 코인 %d개 얻음",
-		a.Actor, b.Name(), coins)}, nil
+	return []Event{{Kind: Harvested, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo, Coins: coins}}, nil
 }
 
-//line bohnanza.w:752
+//line bohnanza.w:875
 func (s *State) applyBuyField(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if len(p.Fields) != 2 {
@@ -593,10 +689,10 @@ func (s *State) applyBuyField(a Action) ([]Event, error) {
 	s.Removed = append(s.Removed, p.Treasury[n-3:]...)
 	p.Treasury = p.Treasury[:n-3]
 	p.Fields = append(p.Fields, Field{})
-	return []Event{fmt.Sprintf("%d번 플레이어가 세 번째 밭을 삼", a.Actor)}, nil
+	return []Event{{Kind: BoughtField, Actor: a.Actor, To: NoActor}}, nil
 }
 
-//line bohnanza.w:770
+//line bohnanza.w:893
 func (s *State) applyEndPhase(a Action) ([]Event, error) {
 	switch s.Stage {
 	case PhasePlant:
@@ -611,35 +707,37 @@ func (s *State) applyEndPhase(a Action) ([]Event, error) {
 	return nil, fmt.Errorf("보난자: 이 단계는 끝낼 수 없음")
 }
 
-//line bohnanza.w:786
+//line bohnanza.w:909
 func (s *State) flipAndTrade() ([]Event, error) {
 	var ev []Event
 	for i := 0; i < 2; i++ {
 		c, ok := s.draw()
 		if !s.endIfEmpty(ok) {
-			return append(ev, "덱이 바닥나 게임이 끝남"), nil
+			return append(ev, Event{Kind: DeckEmptied,
+				Actor: NoActor, To: NoActor}), nil
 		}
 		s.FaceUp = append(s.FaceUp, c)
-		ev = append(ev, fmt.Sprintf("공개 카드로 %s가 뒤집힘", c.Name()))
+		ev = append(ev, Event{Kind: Revealed,
+			Actor: NoActor, To: NoActor, Crop: c})
 	}
 	s.Stage = PhaseTrade
 	return ev, nil
 }
 
-//line bohnanza.w:803
+//line bohnanza.w:928
 func (s *State) endTradePhase() ([]Event, error) {
 	if len(s.FaceUp) > 0 {
 		return nil, fmt.Errorf("보난자: 공개 카드를 모두 처리해야 함")
 	}
 	if s.giftsPending() {
 		s.Stage = PhaseHarvestGifts
-		return []Event{"받은 콩을 심는 단계로"}, nil
+		return []Event{{Kind: GiftStage, Actor: NoActor, To: NoActor}}, nil
 	}
 	s.endTurn()
-	return []Event{"턴을 넘김"}, nil
+	return []Event{{Kind: TurnPassed, Actor: NoActor, To: NoActor}}, nil
 }
 
-//line bohnanza.w:818
+//line bohnanza.w:943
 func (s *State) applyTake(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if a.FaceUpNo < 0 || a.FaceUpNo >= len(s.FaceUp) {
@@ -650,11 +748,11 @@ func (s *State) applyTake(a Action) ([]Event, error) {
 		return nil, err
 	}
 	s.FaceUp = removeCard(s.FaceUp, a.FaceUpNo)
-	return []Event{fmt.Sprintf("%d번 플레이어가 공개된 %s를 %d번 밭에 심음",
-		a.Actor, b.Name(), a.FieldNo)}, nil
+	return []Event{{Kind: PlantedFaceUp, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo}}, nil
 }
 
-//line bohnanza.w:840
+//line bohnanza.w:965
 func (s *State) applyPropose(a Action) ([]Event, error) {
 	if a.To == s.Active || a.To < 0 || a.To >= len(s.Players) {
 		return nil, fmt.Errorf("보난자: 거래 상대가 잘못됨")
@@ -663,7 +761,7 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 		return nil, fmt.Errorf("보난자: 빈 거래는 제안할 수 없음")
 	}
 
-//line bohnanza.w:861
+//line bohnanza.w:986
 	if !containsAll(s.Players[s.Active].Hand, a.GiveHand) {
 		return nil, fmt.Errorf("보난자: 내 손패에 없는 콩을 줄 수 없음")
 	}
@@ -671,17 +769,17 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 		return nil, fmt.Errorf("보난자: 공개되지 않은 콩을 줄 수 없음")
 	}
 
-//line bohnanza.w:848
+//line bohnanza.w:973
 	s.Pending = &Proposal{From: s.Active, To: a.To,
 		GiveHand:   append([]Card{}, a.GiveHand...),
 		GiveFaceUp: append([]Card{}, a.GiveFaceUp...),
 		GetHand:    append([]Card{}, a.GetHand...)}
 	give := append(append([]Card{}, a.GiveHand...), a.GiveFaceUp...)
-	return []Event{fmt.Sprintf("%d번이 %d번에게 [%s] 주고 [%s] 받기를 제안",
-		s.Active, a.To, beanNames(give), beanNames(a.GetHand))}, nil
+	return []Event{{Kind: TradeProposed, Actor: s.Active, To: a.To,
+		Give: give, Get: append([]Card{}, a.GetHand...)}}, nil
 }
 
-//line bohnanza.w:871
+//line bohnanza.w:996
 func (s *State) applyRespond(a Action) ([]Event, error) {
 	pr := s.Pending
 	if pr == nil {
@@ -689,10 +787,10 @@ func (s *State) applyRespond(a Action) ([]Event, error) {
 	}
 	if !a.Accept {
 		s.Pending = nil
-		return []Event{fmt.Sprintf("%d번이 제안을 거절", a.Actor)}, nil
+		return []Event{{Kind: TradeRejected, Actor: a.Actor, To: NoActor}}, nil
 	}
 
-//line bohnanza.w:890
+//line bohnanza.w:1015
 	from, to := s.Players[pr.From], s.Players[pr.To]
 	if !containsAll(from.Hand, pr.GiveHand) ||
 		!containsAll(s.FaceUp, pr.GiveFaceUp) ||
@@ -707,13 +805,13 @@ func (s *State) applyRespond(a Action) ([]Event, error) {
 	from.Acquired = append(from.Acquired, pr.GetHand...)
 	s.Pending = nil
 	give := append(append([]Card{}, pr.GiveHand...), pr.GiveFaceUp...)
-	return []Event{fmt.Sprintf("%d번과 %d번이 [%s] 주고 [%s] 받아 교환 성사",
-		pr.From, pr.To, beanNames(give), beanNames(pr.GetHand))}, nil
+	return []Event{{Kind: TradeAccepted, Actor: pr.From, To: pr.To,
+		Give: give, Get: append([]Card{}, pr.GetHand...)}}, nil
 
-//line bohnanza.w:881
+//line bohnanza.w:1006
 }
 
-//line bohnanza.w:910
+//line bohnanza.w:1035
 func containsAll(pool, want []Card) bool {
 	cnt := make(map[Card]int)
 	for _, c := range pool {
@@ -741,7 +839,7 @@ func removeBeans(pool, drop []Card) []Card {
 	return out
 }
 
-//line bohnanza.w:940
+//line bohnanza.w:1065
 func (s *State) applyPlantGift(a Action) ([]Event, error) {
 	p := s.Players[a.Actor]
 	b := p.Acquired[0]
@@ -749,21 +847,21 @@ func (s *State) applyPlantGift(a Action) ([]Event, error) {
 		return nil, err
 	}
 	p.Acquired = p.Acquired[1:]
-	ev := []Event{fmt.Sprintf("%d번 플레이어가 받은 %s를 %d번 밭에 심음",
-		a.Actor, b.Name(), a.FieldNo)}
+	ev := []Event{{Kind: PlantedGift, Actor: a.Actor, To: NoActor,
+		Crop: b, FieldNo: a.FieldNo}}
 	if !s.giftsPending() {
 		s.endTurn()
-		ev = append(ev, "턴을 넘김")
+		ev = append(ev, Event{Kind: TurnPassed, Actor: NoActor, To: NoActor})
 	}
 	return ev, nil
 }
 
-//line bohnanza.w:958
+//line bohnanza.w:1083
 func removeCard(cs []Card, i int) []Card {
 	return append(cs[:i:i], cs[i+1:]...)
 }
 
-//line bohnanza.w:966
+//line bohnanza.w:1091
 func (s *State) Over() bool { return s.Stage == GameOver }
 
 func (s *State) Scores() []int {
@@ -777,7 +875,7 @@ func (s *State) Scores() []int {
 	return sc
 }
 
-//line bohnanza.w:982
+//line bohnanza.w:1107
 func (s *State) countCards() int {
 	n := len(s.Deck) + len(s.Discard) + len(s.FaceUp) + len(s.Removed)
 	for _, p := range s.Players {
@@ -796,7 +894,7 @@ func (s *State) Check() error {
 	return nil
 }
 
-//line bohnanza.w:1011
+//line bohnanza.w:1136
 type FieldView struct {
 	Crop  Bean `json:"bean"` // Count가 0이면 빈 밭이라 의미 없음
 	Count int  `json:"count"`
@@ -812,7 +910,7 @@ type PlayerView struct {
 	Hand      []Bean      `json:"hand,omitempty"` // 본인만 채워진다
 }
 
-//line bohnanza.w:1029
+//line bohnanza.w:1154
 type ProposalView struct {
 	From       int    `json:"from"`
 	To         int    `json:"to"`
@@ -821,7 +919,7 @@ type ProposalView struct {
 	GetHand    []Bean `json:"getHand"`
 }
 
-//line bohnanza.w:1040
+//line bohnanza.w:1165
 type View struct {
 	You          int           `json:"you"`
 	Active       int           `json:"active"`
@@ -838,7 +936,7 @@ type View struct {
 	Scores       []int         `json:"scores,omitempty"`
 }
 
-//line bohnanza.w:1059
+//line bohnanza.w:1184
 func (s *State) View(player int) View {
 	v := View{
 		You:          player,
@@ -856,7 +954,7 @@ func (s *State) View(player int) View {
 		v.Players = append(v.Players, s.playerView(i, p, player))
 	}
 
-//line bohnanza.w:1081
+//line bohnanza.w:1206
 	if s.Pending != nil {
 		pr := s.Pending
 		v.Pending = &ProposalView{From: pr.From, To: pr.To,
@@ -868,11 +966,11 @@ func (s *State) View(player int) View {
 		v.Scores = s.Scores()
 	}
 
-//line bohnanza.w:1076
+//line bohnanza.w:1201
 	return v
 }
 
-//line bohnanza.w:1095
+//line bohnanza.w:1220
 func (s *State) playerView(i int, p *Player, viewer int) PlayerView {
 	pv := PlayerView{
 		Index:     i,
@@ -890,12 +988,12 @@ func (s *State) playerView(i int, p *Player, viewer int) PlayerView {
 	return pv
 }
 
-//line bohnanza.w:1114
+//line bohnanza.w:1239
 func (s *State) ViewJSON(player int) ([]byte, error) {
 	return json.Marshal(s.View(player))
 }
 
-//line bohnanza.w:1121
+//line bohnanza.w:1246
 type BeanInfoView struct {
 	ID    Bean   `json:"id"`
 	Name  string `json:"name"`

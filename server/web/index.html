@@ -74,6 +74,11 @@
   .pending { background: #fff4e0; border: 1px solid #e9c27a; border-radius: 10px; padding: 10px 12px; }
   .log { font-size: 13px; color: var(--muted); max-height: 140px; overflow-y: auto; }
   .log div { padding: 1px 0; }
+  /* 이제 이벤트가 갈래를 아는 값이라, 눈에 띄어야 할 것만 도드라지게 할 수 있다. */
+  .log .ev-tradeProposed, .log .ev-tradeAccepted { color: var(--accent); }
+  .log .ev-harvested { color: var(--accent2); }
+  .log .ev-deckEmptied { color: var(--accent); font-weight: 600; }
+  .log .mine { font-weight: 600; }
   .chat { max-height: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
   .chat .msg { padding: 1px 0; }
   .chat .who { font-weight: 700; margin-right: 6px; }
@@ -382,12 +387,59 @@ async function send(action) {
   } catch (e) { $("actErr").textContent = "" + e; }
 }
 
+// 조사는 앞말 받침을 따라 갈린다. 한글 음절은 0xAC00부터 28개씩 묶여, 그
+// 나머지가 0이면 받침이 없다. 이름이 숫자로 끝나면("봇 1") 읽는 소리로 따진다.
+const DIGIT_FINAL = [true, true, false, true, false, false, true, true, true, false];
+function hasFinal(s) {
+  if (!s) return false;
+  const ch = s[s.length - 1];
+  if (ch >= "0" && ch <= "9") return DIGIT_FINAL[+ch];
+  const c = s.codePointAt(s.length - 1);
+  if (c < 0xac00 || c > 0xd7a3) return false; // 한글 음절이 아니다
+  return (c - 0xac00) % 28 !== 0;
+}
+const objP = (s) => (hasFinal(s) ? "을" : "를");
+const subP = (s) => (hasFinal(s) ? "이" : "가");
+const withP = (s) => (hasFinal(s) ? "과" : "와");
+const beanList = (a) => (a && a.length ? a.map(beanName).join(",") : "없음");
+
+// 구조적 이벤트를 문장으로 그린다. 엔진은 자리 번호밖에 모르지만 여기서는
+// 참가자 이름을 알고 있으므로, 이름으로 적고 조사도 이름에 맞춰 고른다.
+function eventText(e) {
+  const who = pName(e.actor), crop = beanName(e.bean);
+  switch (e.kind) {
+    case "planted":
+      return `${who}${subP(who)} ${crop}${objP(crop)} ${e.field}번 밭에 심음`;
+    case "plantedFaceUp":
+      return `${who}${subP(who)} 공개된 ${crop}${objP(crop)} ${e.field}번 밭에 심음`;
+    case "plantedGift":
+      return `${who}${subP(who)} 받은 ${crop}${objP(crop)} ${e.field}번 밭에 심음`;
+    case "harvested":
+      return `${who}${subP(who)} ${crop} 밭을 거둬 코인 ${e.coins}개 얻음`;
+    case "boughtField": return `${who}${subP(who)} 세 번째 밭을 삼`;
+    case "revealed":    return `공개 카드로 ${crop}${subP(crop)} 뒤집힘`;
+    case "deckEmptied": return "덱이 바닥나 게임이 끝남";
+    case "giftStage":   return "받은 콩을 심는 단계로";
+    case "turnPassed":  return "턴을 넘김";
+    case "tradeProposed":
+      return `${who}${subP(who)} ${pName(e.to)}에게 `
+        + `[${beanList(e.give)}] 주고 [${beanList(e.get)}] 받기를 제안`;
+    case "tradeRejected": return `${who}${subP(who)} 제안을 거절`;
+    case "tradeAccepted":
+      return `${who}${subP(who)} ${pName(e.to)}${withP(pName(e.to))} `
+        + `[${beanList(e.give)}] 주고 [${beanList(e.get)}] 받아 교환 성사`;
+  }
+  return e.kind; // 모르는 갈래는 이름만 적어 둔다
+}
+
 function logEvents(events) {
   if (!events) return;
   const log = $("log");
   for (const e of events) {
     const d = document.createElement("div");
-    d.textContent = "· " + e;
+    d.className = "ev ev-" + e.kind;
+    if (e.actor === me) d.classList.add("mine");
+    d.textContent = "· " + eventText(e); // 이름이 섞이므로 textContent로 넣는다
     log.prepend(d);
   }
 }

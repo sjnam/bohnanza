@@ -101,10 +101,10 @@ type Game struct {
 데 쓴다. 봇 여부는 엔진의 |View|가 모르는 서버만의 사정이라 여기에 따로 싣는다.
 @<게임 방과 구독자@>=
 type Message struct {
-	Board  bz.View  `json:"view"`
-	Events []string `json:"events"`
-	Bots   []bool   `json:"bots"`  // |bots[p]|가 참이면 |p|번은 봇
-	Names  []string `json:"names"` // 자리마다의 표시 이름
+	Board  bz.View    `json:"view"`
+	Events []bz.Event `json:"events"`
+	Bots   []bool     `json:"bots"`  // |bots[p]|가 참이면 |p|번은 봇
+	Names  []string   `json:"names"` // 자리마다의 표시 이름
 }
 
 @ 구독자가 붙고 떨어지는 일을 다룬다. |register|는 새 구독자를 목록에 넣고,
@@ -183,7 +183,7 @@ func (g *Game) setName(player int, name string) {
 사람이 봇이면 사람을 기다리지 않고 서버가 곧장 두어 판을 앞으로 굴린다. 불법이면
 상태를 그대로 두고 오류만 돌려준다.
 @<수를 적용하고 알리기@>=
-func (g *Game) apply(a bz.Action) ([]string, error) {
+func (g *Game) apply(a bz.Action) ([]bz.Event, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	events, err := g.state.Apply(a)
@@ -222,7 +222,7 @@ func (g *Game) runBots() {
 멈추면 안 되므로 꽉 찼으면 건너뛴다(그 구독자는 다음 갱신 때 따라잡는다).
 호출자가 방 뮤텍스를 쥔 채 부른다.
 @<수를 적용하고 알리기@>=
-func (g *Game) broadcast(events []string) {
+func (g *Game) broadcast(events []bz.Event) {
 	for _, s := range g.subs {
 		f := sseFrame("", g.encode(s.player, events))
 		select {
@@ -247,7 +247,7 @@ func sseFrame(event string, data []byte) []byte {
 저절로 지켜지고, 봇 표식은 방이 안다. |botFlags|는 그 표식을 만든다---봇 자리는
 정책이 심겨 있어 |nil|이 아니다.
 @<수를 적용하고 알리기@>=
-func (g *Game) encode(player int, events []string) []byte {
+func (g *Game) encode(player int, events []bz.Event) []byte {
 	b, _ := json.Marshal(Message{Board: g.state.View(player),
 		Events: events, Bots: g.botFlags(), Names: g.names})
 	return b
@@ -537,7 +537,8 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
-	writeJSON(w, Message{Board: g.view(player), Events: events, Bots: g.botFlags()})
+	writeJSON(w, Message{Board: g.view(player), Events: events,
+		Bots: g.botFlags(), Names: g.names})
 }
 
 @ 뷰 스트림. 토큰으로 신원을 확인한 뒤 SSE 헤더를 세우고 구독자로 등록한다.

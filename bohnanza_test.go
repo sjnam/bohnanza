@@ -1,4 +1,4 @@
-//line bohnanza.w:1141
+//line bohnanza.w:1266
 package bohnanza
 
 import (
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-//line bohnanza.w:1159
+//line bohnanza.w:1284
 func TestDeckSize(t *testing.T) {
 	total := 0
 	for b := Bean(0); b < NumBeans; b++ {
@@ -25,7 +25,7 @@ func TestDeckSize(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1179
+//line bohnanza.w:1304
 func TestCoins(t *testing.T) {
 	cases := []struct {
 		b    Bean
@@ -43,7 +43,7 @@ func TestCoins(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1201
+//line bohnanza.w:1326
 func TestBilateralTrade(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -64,7 +64,7 @@ func TestBilateralTrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-//line bohnanza.w:1226
+//line bohnanza.w:1351
 	p0, p1 := s.Players[0], s.Players[1]
 	if len(p0.Acquired) != 1 || p0.Acquired[0] != Red {
 		t.Errorf("0번 받은 콩이 강낭콩이 아님: %v", p0.Acquired)
@@ -82,10 +82,10 @@ func TestBilateralTrade(t *testing.T) {
 		t.Error("교환 뒤에도 대기 제안이 남음")
 	}
 
-//line bohnanza.w:1221
+//line bohnanza.w:1346
 }
 
-//line bohnanza.w:1246
+//line bohnanza.w:1371
 func TestMultiCardTrade(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -114,7 +114,7 @@ func TestMultiCardTrade(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1278
+//line bohnanza.w:1403
 func TestProposeNeedsFulfillment(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -142,7 +142,7 @@ func TestProposeNeedsFulfillment(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1310
+//line bohnanza.w:1435
 func TestViewRedaction(t *testing.T) {
 	s, err := New(3, 7)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestViewRedaction(t *testing.T) {
 		t.Errorf("덱 장수가 틀림: %d", v.DeckCount)
 	}
 
-//line bohnanza.w:1334
+//line bohnanza.w:1459
 	b, err := s.ViewJSON(0)
 	if err != nil {
 		t.Fatal(err)
@@ -186,10 +186,10 @@ func TestViewRedaction(t *testing.T) {
 		t.Errorf("도감이 이상함: %d종 %d장", len(cat), total)
 	}
 
-//line bohnanza.w:1329
+//line bohnanza.w:1454
 }
 
-//line bohnanza.w:1361
+//line bohnanza.w:1486
 func TestHarvestRestriction(t *testing.T) {
 	s := &State{
 		Players: []*Player{{Fields: []Field{{Coffee, 1}, {Blue, 2}}}},
@@ -214,7 +214,7 @@ func TestHarvestRestriction(t *testing.T) {
 	}
 }
 
-//line bohnanza.w:1389
+//line bohnanza.w:1514
 func TestRandomPlaythrough(t *testing.T) {
 	for seed := uint64(0); seed < 200; seed++ {
 		players := 2 + int(seed%3)
@@ -224,7 +224,7 @@ func TestRandomPlaythrough(t *testing.T) {
 		}
 		rng := rand.New(rand.NewPCG(seed, 12345))
 
-//line bohnanza.w:1404
+//line bohnanza.w:1529
 		for step := 0; step < 100000 && !s.Over(); step++ {
 			actor := s.ToAct()
 			if actor < 0 {
@@ -245,6 +245,6 @@ func TestRandomPlaythrough(t *testing.T) {
 			t.Fatalf("씨앗 %d: 10만 수 안에 게임이 안 끝남", seed)
 		}
 
-//line bohnanza.w:1398
+//line bohnanza.w:1523
 	}
 }
