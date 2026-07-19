@@ -2,6 +2,7 @@
 @s Mutex int
 @s Rand int
 @s Reader int
+@s time.Time int
 @s http.Request int
 @s http.ResponseWriter int
 

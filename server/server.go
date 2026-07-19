@@ -315,7 +315,7 @@ func randToken() string {
 	return hex.EncodeToString(b[:])
 }
 
-//line server/server.w:440
+//line server/server.w:441
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
@@ -329,7 +329,7 @@ func (h *Hub) auth(w http.ResponseWriter, r *http.Request) (*Game, int, bool) {
 	return g, player, ok
 }
 
-//line server/server.w:457
+//line server/server.w:458
 func requestToken(r *http.Request) string {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimPrefix(h, "Bearer ")
@@ -340,7 +340,7 @@ func requestToken(r *http.Request) string {
 	return ""
 }
 
-//line server/server.w:471
+//line server/server.w:473
 func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	players, bots := 3, 0
 	if v := r.URL.Query().Get("players"); v != "" {
@@ -363,7 +363,7 @@ func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"code": code, "players": players, "bots": bots})
 }
 
-//line server/server.w:497
+//line server/server.w:500
 func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	player, tok, err := h.join(r.PathValue("code"), r.URL.Query().Get("name"))
 	if err != nil {
@@ -373,7 +373,7 @@ func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"player": player, "token": tok})
 }
 
-//line server/server.w:508
+//line server/server.w:511
 func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -382,7 +382,7 @@ func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, g.view(player))
 }
 
-//line server/server.w:521
+//line server/server.w:524
 func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -402,7 +402,7 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, Message{Board: g.view(player), Events: events, Bots: g.botFlags()})
 }
 
-//line server/server.w:544
+//line server/server.w:548
 func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -414,7 +414,7 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-//line server/server.w:561
+//line server/server.w:565
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -434,22 +434,22 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-//line server/server.w:555
+//line server/server.w:559
 }
 
-//line server/server.w:583
+//line server/server.w:587
 func handleCatalog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, bz.Catalog())
 }
 
-//line server/server.w:592
+//line server/server.w:596
 type ChatMsg struct {
 	Seq  int    `json:"seq"` // 방 안에서 늘 커지는 순번
 	From int    `json:"from"`
 	Text string `json:"text"`
 }
 
-//line server/server.w:603
+//line server/server.w:607
 func (g *Game) chat(from int, text string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -469,7 +469,7 @@ func (g *Game) chat(from int, text string) {
 	}
 }
 
-//line server/server.w:627
+//line server/server.w:631
 func (g *Game) rolloverChat() {
 	if g.state.Active != g.turnActive {
 		g.turnActive = g.state.Active
@@ -477,7 +477,7 @@ func (g *Game) rolloverChat() {
 	}
 }
 
-//line server/server.w:638
+//line server/server.w:642
 func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
@@ -491,7 +491,7 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-//line server/server.w:655
+//line server/server.w:660
 	text := strings.TrimSpace(body.Text)
 	if text == "" {
 		w.WriteHeader(http.StatusNoContent)
@@ -503,10 +503,10 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 	g.chat(player, text)
 	w.WriteHeader(http.StatusNoContent)
 
-//line server/server.w:651
+//line server/server.w:655
 }
 
-//line server/server.w:672
+//line server/server.w:677
 func main() {
 	addr := ":8080"
 	if len(os.Args) > 1 {

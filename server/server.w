@@ -436,6 +436,7 @@ func randToken() string {
 계층(|apply|\slash |view|)을 불러 결과를 \.{JSON}으로 돌려줄 뿐이다. 먼저 \.{JSON}
 응답 잔손질과, 토큰으로 세션을 찾는 |auth|를 묶어 둔다---신원이 확인되지 않으면
 401을 돌려주고 거짓을 낸다.
+@d http.StatusUnauthorized
 @<\.{HTTP} 손잡이@>=
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -467,6 +468,7 @@ func requestToken(r *http.Request) string {
 @ 새 게임. 인원\slash 봇수\slash 씨앗을 질의에서 읽어 방을 열고 방 코드를
 돌려준다. 봇수를 안 주면 0(사람만)이다. 방을 만든 사람도 따로 참가해 자리를
 잡아야 한다(클라이언트가 곧바로 참가를 부른다).
+@d http.StatusBadRequest
 @<\.{HTTP} 손잡이@>=
 func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	players, bots := 3, 0
@@ -493,6 +495,7 @@ func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 @ 참가. 방 코드로 빈자리를 하나 잡아, 배정된 자리 번호와 토큰을 돌려준다.
 클라이언트는 이 토큰을 간직했다가 이후 모든 요청에 실어 보낸다(새로고침 뒤
 다시 붙을 때도 같은 토큰을 그대로 쓰면 된다).
+@d http.StatusConflict
 @<\.{HTTP} 손잡이@>=
 func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	player, tok, err := h.join(r.PathValue("code"), r.URL.Query().Get("name"))
@@ -540,6 +543,7 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 @ 뷰 스트림. 토큰으로 신원을 확인한 뒤 SSE 헤더를 세우고 구독자로 등록한다.
 채널로 오는 갱신을 그대로 \.{data:} 줄에 실어 흘려보내고, 접속이 끊기면(요청
 맥락이 닫히면) 구독을 푼다.
+@d http.StatusInternalServerError
 @<\.{HTTP} 손잡이@>=
 func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
@@ -651,6 +655,7 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 }
 
 @ 앞뒤 공백을 떼고, 빈 글은 조용히 흘린다. 너무 길면 300글자로 자른다.
+@d http.StatusNoContent
 @<채팅 글을 다듬어 방에 알린다@>=
 text := strings.TrimSpace(body.Text)
 if text == "" {
