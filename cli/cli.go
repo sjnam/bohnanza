@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	bz "github.com/sjnam/bohnanza"
 	"github.com/sjnam/bohnanza/bot"
@@ -15,7 +16,7 @@ import (
 
 var in = bufio.NewReader(os.Stdin)
 
-//line cli/cli.w:147
+//line cli/cli.w:158
 func fieldStr(f bz.FieldView) string {
 	if f.Count == 0 {
 		return "[ · ]"
@@ -23,7 +24,7 @@ func fieldStr(f bz.FieldView) string {
 	return fmt.Sprintf("[%s×%d]", f.Crop.Name(), f.Count)
 }
 
-//line cli/cli.w:156
+//line cli/cli.w:167
 func cardNames(cs []bz.Bean) string {
 	if len(cs) == 0 {
 		return "없음"
@@ -35,7 +36,7 @@ func cardNames(cs []bz.Bean) string {
 	return strings.Join(names, ",")
 }
 
-//line cli/cli.w:171
+//line cli/cli.w:182
 func drawBoard(v bz.View) {
 	fmt.Printf("\n───────── %s 단계 · %d번 플레이어 차례 ─────────\n",
 		v.PhaseName, v.ToAct)
@@ -51,7 +52,7 @@ func drawBoard(v bz.View) {
 		fmt.Println()
 	}
 
-//line cli/cli.w:193
+//line cli/cli.w:204
 	if v.Pending != nil {
 		pr := v.Pending
 		give := append(append([]bz.Bean{}, pr.GiveHand...), pr.GiveFaceUp...)
@@ -59,9 +60,9 @@ func drawBoard(v bz.View) {
 			pr.From, cardNames(give), cardNames(pr.GetHand))
 	}
 
-//line cli/cli.w:186
+//line cli/cli.w:197
 
-//line cli/cli.w:204
+//line cli/cli.w:215
 	if len(v.FaceUp) > 0 {
 		fmt.Print("  공개 카드: ")
 		for i, c := range v.FaceUp {
@@ -86,10 +87,10 @@ func drawBoard(v bz.View) {
 		fmt.Println()
 	}
 
-//line cli/cli.w:187
+//line cli/cli.w:198
 }
 
-//line cli/cli.w:233
+//line cli/cli.w:244
 func chooseAction(v bz.View) (bz.Action, bool) {
 	acts := v.Legal
 	fmt.Println("  둘 수 있는 수:")
@@ -115,11 +116,11 @@ func chooseAction(v bz.View) (bz.Action, bool) {
 	}
 }
 
-//line cli/cli.w:49
+//line cli/cli.w:50
 func main() {
 	players, humans, seed := 3, 1, uint64(1)
 
-//line cli/cli.w:66
+//line cli/cli.w:67
 	if len(os.Args) > 1 {
 		players, _ = strconv.Atoi(os.Args[1])
 	}
@@ -132,25 +133,27 @@ func main() {
 		}
 	}
 
-//line cli/cli.w:52
+//line cli/cli.w:53
 	s, err := bz.New(players, seed)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-//line cli/cli.w:83
+//line cli/cli.w:84
+	const botPause = 500 * time.Millisecond // 사람이 읽을 틈을 주는 뜸
+
 	bots := make([]bot.Policy, players)
 	for i := humans; i < players; i++ {
 		bots[i] = bot.NewStrategist()
 	}
 	rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 
-//line cli/cli.w:58
+//line cli/cli.w:59
 	fmt.Printf("보난자 시작! %d명(사람 %d, 봇 %d), 씨앗 %d\n",
 		players, humans, players-humans, seed)
 
-//line cli/cli.w:94
+//line cli/cli.w:97
 	for !s.Over() {
 		actor := s.ToAct()
 		if actor < 0 {
@@ -158,9 +161,12 @@ func main() {
 		}
 		view := s.View(actor)
 
-//line cli/cli.w:107
+//line cli/cli.w:115
 		var act bz.Action
 		if p := bots[actor]; p != nil {
+			if humans > 0 {
+				time.Sleep(botPause)
+			}
 			act = p.Act(view, rng)
 			fmt.Printf("[봇 %d] %s\n", actor, act)
 		} else {
@@ -181,12 +187,12 @@ func main() {
 			fmt.Println("  →", e)
 		}
 
-//line cli/cli.w:101
+//line cli/cli.w:104
 	}
 
-//line cli/cli.w:61
+//line cli/cli.w:62
 
-//line cli/cli.w:131
+//line cli/cli.w:142
 	fmt.Println("\n===== 게임 종료 =====")
 	scores := s.Scores()
 	best, winner := -1, 0
@@ -198,5 +204,5 @@ func main() {
 	}
 	fmt.Printf("승자: %d번 플레이어 (%d코인)\n", winner, best)
 
-//line cli/cli.w:62
+//line cli/cli.w:63
 }

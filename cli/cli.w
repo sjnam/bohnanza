@@ -32,6 +32,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	bz "github.com/sjnam/bohnanza"
 	"github.com/sjnam/bohnanza/bot"
@@ -80,6 +81,8 @@ if len(os.Args) > 3 {
 맞다. |bots[p]|가 |nil|이면 $p$번은 사람 자리다. 봇은 결정론적이라 난수원을
 쓰지 않지만, 정책 계약이 난수원을 받으므로 하나 마련해 둔다.
 @<봇을 앉힌다@>=
+const botPause = 500 * time.Millisecond // 사람이 읽을 틈을 주는 뜸
+
 bots := make([]bot.Policy, players)
 for i := humans; i < players; i++ {
 	bots[i] = bot.NewStrategist()
@@ -100,12 +103,20 @@ for !s.Over() {
 	@<봇이면 봇이, 사람이면 사람이 한 수 둔다@>@;
 }
 
-@ 지금 나설 자리가 봇이면 정책에게 물어 곧장 두고, 무슨 수를 뒀는지 한 줄로
-알린다. 사람 자리면 예전처럼 판을 그려 주고 번호로 고르게 한다. 어느 쪽이든
-고른 수를 엔진에 적용하고 이벤트를 흘려 준다.
+@ 지금 나설 자리가 봇이면 정책에게 물어 두고, 무슨 수를 뒀는지 한 줄로 알린다.
+사람 자리면 예전처럼 판을 그려 주고 번호로 고르게 한다. 어느 쪽이든 고른 수를
+엔진에 적용하고 이벤트를 흘려 준다.
+
+봇의 수 앞에는 |botPause|만큼 뜸을 들인다. 봇 서넛의 수십 수가 한꺼번에 쏟아지면
+사람은 무슨 일이 있었는지 읽을 틈이 없기 때문이다. 다만 {\bf 사람이 없는 판에서는
+쉬지 않는다}---봇끼리만 두는 판은 읽을 사람이 없으니 뜸이 낭비이고, 그런 판을
+끝까지 돌려 보는 일(|bohnanza-cli 3 0 42| 따위)이 몇 분씩 걸려서는 곤란하다.
 @<봇이면 봇이, 사람이면 사람이 한 수 둔다@>=
 var act bz.Action
 if p := bots[actor]; p != nil {
+	if humans > 0 {
+		time.Sleep(botPause)
+	}
 	act = p.Act(view, rng)
 	fmt.Printf("[봇 %d] %s\n", actor, act)
 } else {

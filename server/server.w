@@ -93,6 +93,7 @@ type Game struct {
 	chatSeq int          // 채팅 순번(재접속 시 중복 걸러내기용, 절대 되감지 않음)
 	turnActive int       // 채팅이 매인 턴(활성 플레이어). 바뀌면 채팅을 비운다
 	lastSeen time.Time   // 마지막 활동 시각. 오래 놀고 아무도 안 보면 청소부가 치운다
+	botsBusy bool        // 봇 고루틴이 이미 돌고 있는가(둘이 겹치지 않게)
 }
 
 @ 한 플레이어에게 보내는 갱신 한 통은 그의 뷰, 직전 이벤트, 그리고 어느 자리가
@@ -179,9 +180,8 @@ func (g *Game) setName(player int, name string) {
 
 @* 수를 적용하고 알리기.
 |apply|가 서버의 심장이다. 뮤텍스를 쥐고 엔진에 사람의 수를 넘긴 뒤, 성공하면
-모든 구독자에게 새 뷰를 민다. 이어서 |runBots|가 봇 차례를 처리한다---다음 둘
-사람이 봇이면 사람을 기다리지 않고 서버가 곧장 두어 판을 앞으로 굴린다. 불법이면
-상태를 그대로 두고 오류만 돌려준다.
+모든 구독자에게 새 뷰를 민다. 이어서 봇 차례가 되었으면 봇을 굴릴 고루틴을
+깨운다. 불법이면 상태를 그대로 두고 오류만 돌려준다.
 @<수를 적용하고 알리기@>=
 func (g *Game) apply(a bz.Action) ([]bz.Event, error) {
 	g.mu.Lock()
@@ -193,29 +193,79 @@ func (g *Game) apply(a bz.Action) ([]bz.Event, error) {
 	g.lastSeen = time.Now()
 	g.rolloverChat()
 	g.broadcast(events)
-	g.runBots()
+	g.wakeBots()
 	return events, nil
 }
 
-@ 봇 차례를 잇는다. 지금 둘 사람이 봇인 동안, 그 봇의 정책으로 수를 골라 두고
-매번 새 뷰를 민다. 사람 차례가 되거나 게임이 끝나면 멈춘다. |apply|가 이미 방
-뮤텍스를 쥐고 있으므로 여기서는 다시 잠그지 않는다---봇의 수 하나하나가 구독자
-화면에 차례로 나타난다.
+@ 예전에는 여기서 봇 차례를 {\it 그 자리에서\/} 끝까지 두었다. 그러면 봇 서넛의
+수십 수가 한 묶음으로 쏟아져, 보는 사람에게는 판이 순간이동을 한 것처럼 보였다.
+무슨 일이 있었는지 읽을 틈이 없다.
+
+그래서 봇을 따로 도는 고루틴으로 옮기고 수와 수 사이에 |botPause|만큼 쉬게
+했다. 여기서 지켜야 할 것이 하나 있다: {\bf 방 뮤텍스를 쥔 채로 자면 안 된다.}
+|apply|는 뮤텍스를 쥐고 도는데 그 안에서 잠들면 그동안 채팅도 참가도 막히고,
+무엇보다 청소부가 |h.mu|를 쥔 채 |g.mu|를 기다리다 허브 전체가 멎는다. 그러니
+고루틴은 {\it 잠글 때마다 한 수씩만\/} 두고, 잠은 반드시 뮤텍스 밖에서 잔다.
+뜸의 길이는 취향이지만 셈은 해 두자. 봇 하나의 한 턴은 대여섯 수이니 턴마다
+2초 반쯤이고, 3인 한 판을 끝까지 두면 봇의 수가 백쉰 번쯤이라 다 합쳐 1분
+남짓이 뜸으로 간다. 사람이 제 수를 생각하는 시간에 견주면 큰 짐은 아니다.
+더 빠르거나 느리게 하고 싶으면 이 상수 하나만 고치면 된다.
 @<수를 적용하고 알리기@>=
-func (g *Game) runBots() {
-	for !g.state.Over() {
-		p := g.state.ToAct()
-		if p < 0 || g.bots[p] == nil {
+const botPause = 500 * time.Millisecond // 봇의 수와 수 사이 뜸
+
+@ |wakeBots|는 호출자가 뮤텍스를 쥔 채 부른다. 지금 둘 차례가 봇이 아니면 할
+일이 없고, 이미 고루틴이 돌고 있으면 또 띄우지 않는다---|botsBusy|가 그 빗장이다.
+@<수를 적용하고 알리기@>=
+func (g *Game) wakeBots() {
+	if g.botsBusy || g.state.Over() {
+		return
+	}
+	if p := g.state.ToAct(); p < 0 || g.bots[p] == nil {
+		return
+	}
+	g.botsBusy = true
+	go g.playBots()
+}
+
+@ 봇 고루틴이다. 한 수 두기 {\it 전에\/} 쉬는 것에 뜻이 있다---사람이 제 수를
+두면 그 결과가 먼저 화면에 닿고, 잠깐 뜸 들인 뒤에 봇이 응수한다. 사람 차례가
+되거나 판이 끝나면 |oneBotMove|가 거짓을 돌려주며 빗장을 푼다.
+@<수를 적용하고 알리기@>=
+func (g *Game) playBots() {
+	for {
+		time.Sleep(botPause)
+		if !g.oneBotMove() {
 			return
 		}
-		ev, err := g.state.Apply(g.bots[p].Act(g.state.View(p), g.rng))
-		if err != nil {
-			return
-		}
-		g.rolloverChat()
-		g.broadcast(ev)
 	}
 }
+
+@ 봇의 수 {\bf 하나}를 둔다. 뮤텍스는 이 함수 안에서만 쥐므로, 바깥의 잠은
+아무도 막지 않는다. 더 둘 것이 남았으면 참을 돌려준다. 어느 갈래로 끝나든
+|botsBusy|를 반드시 내려 두어야 다음 |wakeBots|가 고루틴을 다시 띄울 수 있다.
+@<수를 적용하고 알리기@>=
+func (g *Game) oneBotMove() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	p := g.state.ToAct()
+	if g.state.Over() || p < 0 || g.bots[p] == nil {
+		g.botsBusy = false
+		return false
+	}
+	ev, err := g.state.Apply(g.bots[p].Act(g.state.View(p), g.rng))
+	if err != nil {
+		g.botsBusy = false
+		return false
+	}
+	g.rolloverChat()
+	g.broadcast(ev)
+	return true
+}
+
+@ 청소부가 이 고루틴이 도는 동안 방을 치울 수도 있다. 그래도 탈은 없다. 방을
+|h.games|에서 지워도 고루틴이 쥔 |*Game| 포인터는 살아 있어 하던 수를 마저
+두고 조용히 끝나며, 애초에 청소부는 구독자가 없는 방만 치우므로 그 방송을
+받을 사람도 없다. 잠금 순서도 어긋나지 않는다---고루틴은 |g.mu| 하나만 쥔다.
 
 @ 방의 모든 구독자에게 각자 새 뷰를 민다. 뷰는 사람마다 다르므로(각자 자기
 손패만 본다) 한 사람씩 따로 만든다. 채널은 버퍼가 있고, 느린 구독자 탓에 서버가
@@ -693,5 +743,108 @@ func main() {
 	log.Printf("보난자 서버 열림: %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
+
+@* 시험.
+서버에 시험은 이 하나뿐이다. 그럴 만한 까닭이 있다---나머지 갈래는 규칙을
+모르고 엔진에 넘기기만 하므로 엔진 시험이 이미 지키지만, 봇을 따로 도는
+고루틴으로 옮기면서 {\bf 여러 손이 동시에 방을 만지는} 자리가 새로 생겼기
+때문이다. 이 시험은 그 자리를 지킨다: 봇이 두는 동안 방을 여기저기서 두드려
+경쟁 상태와 잠금 어긋남을 찾는다. |go test -race|로 돌려야 뜻이 있다.
+@(server_test.go@>=
+package main
+
+import (
+	"sync"
+	"testing"
+	"time"
+
+	bz "github.com/sjnam/bohnanza"
+)
+
+@<봇 고루틴 경쟁 시험@>@;
+
+@ 3인 방에 봇 둘을 앉히고 사람 자리의 턴을 끝까지 두어 봇 차례를 연다. 그
+다음부터가 본론이다.
+@<봇 고루틴 경쟁 시험@>=
+func TestBotGoroutineRace(t *testing.T) {
+	h := newHub()
+	code, err := h.create(3, 2, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.join(code, "철수"); err != nil {
+		t.Fatal(err)
+	}
+	g := h.get(code)
+	if g == nil {
+		t.Fatal("방이 없음")
+	}
+	@<사람 턴을 두어 봇 차례를 연다@>@;
+	@<봇이 두는 동안 방을 두드린다@>@;
+}
+
+@ 사람 자리의 수는 아무거나 좋지만, 단계를 끝내는 수를 우선해 턴을 빨리
+넘긴다. 거래 제안은 상대의 응답을 기다리게 되므로 피한다.
+@<사람 턴을 두어 봇 차례를 연다@>=
+for i := 0; i < 40; i++ {
+	g.mu.Lock()
+	done := g.state.Over() || g.state.ToAct() != 0
+	var acts []bz.Action
+	if !done {
+		acts = g.state.Legal(0)
+	}
+	g.mu.Unlock()
+	if done {
+		break
+	}
+	pick := acts[0]
+	for _, a := range acts {
+		if a.Kind == bz.EndPhase {
+			pick = a
+			break
+		}
+		if a.Kind != bz.ProposeTrade {
+			pick = a
+		}
+	}
+	if _, err := g.apply(pick); err != nil {
+		break
+	}
+}
+
+@ 이제 봇 고루틴이 도는 동안 다섯 갈래로 방을 두드린다. 뷰 뜨기와 채팅과
+구독은 |g.mu|를 잡고, 청소부와 새 방 만들기는 |h.mu|를 잡는다---|h.mu|를
+쥔 채 |g.mu|를 기다리는 그 경로가 봇이 뮤텍스를 쥔 채 잠들면 곧장 멎는
+자리이므로, 반드시 함께 돌려야 한다.
+
+멈춤 신호로 |time.After|가 아니라 {\it 닫는 채널\/}을 쓴 것에도 까닭이 있다.
+|time.After|의 값은 {\bf 한 고루틴만} 받아 가므로, 여럿을 함께 세우려면
+채널을 닫아 모두에게 알려야 한다(처음에 |time.After|로 썼다가 고루틴 넷이
+영영 안 멈춰 시험이 멎었다).
+@<봇이 두는 동안 방을 두드린다@>=
+var wg sync.WaitGroup
+stop := make(chan struct{})
+time.AfterFunc(2*time.Second, func() { close(stop) })
+busy := func(f func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			f()
+			time.Sleep(time.Millisecond)
+		}
+	}()
+}
+busy(func() { g.view(0) })
+busy(func() { g.chat(0, "안녕") })
+busy(func() { g.unregister(g.register(0)) })
+busy(func() { h.reap(time.Now()) })
+busy(func() { _, _ = h.create(2, 1, 1) })
+wg.Wait()
 
 @* 색인.
