@@ -1,3 +1,5 @@
+@d os.Stdin os.Stdout os.Stderr
+
 @s uint64 int
 @s Mutex int
 @s Rand int
