@@ -35,7 +35,7 @@ CLI든 봇이든 웹이든 모두 **똑같은 계약**을 쓰고, 남의 손패�
 graph TD
   E["bohnanza.w — 순수 게임 엔진 (package bohnanza)"]
   E --> C["cli/cli.w — 터미널 클라이언트"]
-  E --> B["bot/bot.w — AI 정책 + 대전장"]
+  E --> B["ai/ai.w — AI 정책 + 대전장"]
   E --> S["server/server.w — HTTP·SSE 서버"]
   B --> S
   S --> W["server/web/index.html — 브라우저 UI"]
@@ -43,9 +43,9 @@ graph TD
 
 | 파일 | 내용 | tangle 산출 |
 | --- | --- | --- |
-| `engine/bohnanza.w` | 순수 게임 엔진 | `engine/bohnanza.go`, `engine/bohnanza_test.go` |
+| `engine/engine.w` | 순수 게임 엔진 | `engine/engine.go`, `engine/engine_test.go` |
 | `cli/cli.w` | 핫시트·봇 대전 터미널 | `cli/cli.go` |
-| `bot/bot.w` | 봇 정책과 대전장 | `bot/bot.go`, `bot/bot_test.go` |
+| `ai/ai.w` | 봇 정책과 대전장 | `ai/ai.go`, `ai/ai_test.go` |
 | `server/server.w` | 게임 서버 | `server/server.go` |
 | `server/web/index.html` | 자체 완결형 웹 UI(정적) | — |
 | `types.w` | 문서들이 공유하는 조판 힌트 | — |
@@ -71,7 +71,7 @@ graph TD
 | `make` | tangle + 문서 조판 |
 | `make tangle` | `.w` → `.go` |
 | `make test` | `go test ./...` (엔진·봇 시험) |
-| `make arena` | 봇 실력 측정(`go test -v ./bot`) |
+| `make arena` | 봇 실력 측정(`go test -v ./ai`) |
 | `make cli ARGS="3 1 42"` | CLI 실행(인원·사람수·씨앗) |
 | `make server ARGS=":8080"` | 서버 실행(주소) |
 | `make doc` | PDF 조판(한글이라 LuaTeX) |
