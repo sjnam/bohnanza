@@ -15,14 +15,15 @@
 |net/http|만으로 서버$\to$클라이언트 실시간 전송이 되고, 클라이언트$\to$서버는
 평범한 \.{POST}로 충분하다. 외부 의존성이 없어 어디서나 곧장 돈다.
 
-@ API는 일곱 갈래다. 게임을 만들고, 방에 참가해 자리와 토큰을 받고, 자기 뷰를
-스트림으로 구독하고, 수를 보내고, 채팅하고, 필요하면 뷰를 한 번 찍어 오고, 콩
-도감을 받는다. 정적 웹 클라이언트(\.{web/index.html})는 서버가 아니라 앞단의
-\.{nginx}가 내보낸다---서버는 게임 API에만 집중한다.
+@ API는 여덟 갈래다. 게임을 만들고, 방에 참가해 자리와 토큰을 받거나 자리 없이
+관전만 하고, 자기 뷰를 스트림으로 구독하고, 수를 보내고, 채팅하고, 필요하면
+뷰를 한 번 찍어 오고, 콩 도감을 받는다. 정적 웹 클라이언트(\.{web/index.html})는
+서버가 아니라 앞단의 \.{nginx}가 내보낸다---서버는 게임 API에만 집중한다.
 
 $$\vbox{\halign{\indent\tt#\hfil&\quad#\hfil\cr
 POST /games&                 새 게임(인원\slash 봇수\slash 씨앗) $\to$ 방 코드\cr
 POST /games/:code/join&      빈자리 잡기 $\to$ 자리 번호 + 토큰\cr
+POST /games/:code/watch&     자리 없이 관전 $\to$ 토큰\cr
 GET /stream&                 내 뷰를 SSE로 구독\cr
 POST /action&                액션(\.{JSON})을 보냄\cr
 POST /chat&                  방에 채팅 한 줄 보냄\cr
@@ -320,7 +321,8 @@ func (g *Game) botFlags() []bool {
 @<게임 관리소@>=
 type session struct {
 	game   *Game
-	player int
+	player int    // |bz.Spectator|면 자리 없이 보기만 하는 관전자다
+	name   string // 관전자의 이름(자리 있는 이는 |g.names|에 있다)
 }
 
 type Hub struct {
@@ -403,6 +405,48 @@ func (h *Hub) session(tok string) (*Game, int, bool) {
 	defer h.mu.Unlock()
 	s, ok := h.sessions[tok]
 	return s.game, s.player, ok
+}
+
+func (h *Hub) sessionName(tok string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.sessions[tok].name
+}
+
+@ 관전은 자리를 잡지 않고 붙는 것이다. |claim|을 부르지 않으므로 빈자리는 그대로
+남고, 세션의 자리 번호로 |bz.Spectator|를 적어 둔다. 그 번호가 앞으로 이 토큰의
+{\it 신분증\/}이다---뷰를 뜰 때는 손패 없는 관전자 뷰가 나가고, 액션을 보내면
+자리가 없다는 이유로 물린다.
+
+관전자는 몇 명이 붙어도 좋고 인원 제한도 없다. 방에 붙어 있는 동안은 구독자로
+세어지므로 청소부도 그 방을 치우지 않는다---누가 보고 있는 방은 살려 둔다는
+기존 규칙이 관전자에게도 그대로 맞다.
+@<게임 관리소@>=
+func (h *Hub) watch(code, name string) (string, error) {
+	g := h.get(code)
+	if g == nil {
+		return "", fmt.Errorf("그런 방이 없음")
+	}
+	tok := randToken()
+	h.mu.Lock()
+	h.sessions[tok] = session{game: g, player: bz.Spectator, name: watcherName(name)}
+	h.mu.Unlock()
+	return tok, nil
+}
+
+@ 관전자의 이름은 자리마다 두는 |names|에 넣을 데가 없으므로(자리가 없으니)
+세션에 함께 적는다. 자리 이름과 같은 규칙으로 다듬는다: 홑화살괄호를 지워
+태그로 새는 것을 막고, 스무 글자로 자르고, 비면 기본 이름을 준다.
+@<게임 관리소@>=
+func watcherName(name string) string {
+	name = strings.TrimSpace(strings.NewReplacer("<", "", ">", "").Replace(name))
+	if name == "" {
+		return "관전자"
+	}
+	if r := []rune(name); len(r) > 20 {
+		name = string(r[:20])
+	}
+	return name
 }
 
 @ 방은 메모리에만 있으므로, 그냥 두면 끝난 판과 버려진 방이 끝없이 쌓인다.
@@ -556,6 +600,20 @@ func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"player": player, "token": tok})
 }
 
+@ 관전 손잡이다. 자리를 잡지 않으므로 방이 가득 차 있어도, 판이 이미 한창이어도
+붙을 수 있다. 돌려주는 자리 번호는 |bz.Spectator|이고, 클라이언트는 그 번호를
+보고 ``나는 관전자''임을 안다.
+@<\.{HTTP} 손잡이@>=
+func (h *Hub) handleWatch(w http.ResponseWriter, r *http.Request) {
+	tok, err := h.watch(r.PathValue("code"), r.URL.Query().Get("name"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	writeJSON(w, map[string]any{"player": bz.Spectator, "token": tok,
+		"name": h.sessionName(tok)})
+}
+
 @ 뷰 한 장을 찍어 준다. 토큰으로 신원을 확인하고 그 플레이어의 뷰를 준다.
 @<\.{HTTP} 손잡이@>=
 func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
@@ -574,6 +632,10 @@ func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 	g, player, ok := h.auth(w, r)
 	if !ok {
+		return
+	}
+	if player == bz.Spectator {
+		http.Error(w, "관전자는 수를 둘 수 없음", http.StatusForbidden)
 		return
 	}
 	var a bz.Action
@@ -647,6 +709,7 @@ func handleCatalog(w http.ResponseWriter, r *http.Request) {
 type ChatMsg struct {
 	Seq  int    `json:"seq"` // 방 안에서 늘 커지는 순번
 	From int    `json:"from"`
+	Name string `json:"name,omitempty"` // 관전자만 채운다(자리 있는 이는 자리로 안다)
 	Text string `json:"text"`
 }
 
@@ -655,12 +718,12 @@ type ChatMsg struct {
 최근 서른 줄만 남긴다. 채팅 프레임은 사람마다 다르지 않으므로 한 번 지어 모두에게
 같은 것을 보낸다.
 @<채팅@>=
-func (g *Game) chat(from int, text string) {
+func (g *Game) chat(from int, name, text string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.chatSeq++
 	g.lastSeen = time.Now()
-	m := ChatMsg{Seq: g.chatSeq, From: from, Text: text}
+	m := ChatMsg{Seq: g.chatSeq, From: from, Name: name, Text: text}
 	g.chatLog = append(g.chatLog, m)
 	if len(g.chatLog) > 30 {
 		g.chatLog = g.chatLog[len(g.chatLog)-30:]
@@ -716,7 +779,7 @@ if text == "" {
 if rs := []rune(text); len(rs) > 300 {
 	text = string(rs[:300])
 }
-g.chat(player, text)
+g.chat(player, h.sessionName(requestToken(r)), text)
 w.WriteHeader(http.StatusNoContent)
 
 @* 문 열기.
@@ -735,6 +798,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /games", h.handleNew)
 	mux.HandleFunc("POST /games/{code}/join", h.handleJoin)
+	mux.HandleFunc("POST /games/{code}/watch", h.handleWatch)
 	mux.HandleFunc("GET /stream", h.handleStream)
 	mux.HandleFunc("POST /action", h.handleAction)
 	mux.HandleFunc("POST /chat", h.handleChat)
@@ -762,6 +826,7 @@ import (
 )
 
 @<봇 고루틴 경쟁 시험@>@;
+@<관전자 시험@>@;
 
 @ 3인 방에 봇 둘을 앉히고 사람 자리의 턴을 끝까지 두어 봇 차례를 연다. 그
 다음부터가 본론이다.
@@ -841,10 +906,62 @@ busy := func(f func()) {
 	}()
 }
 busy(func() { g.view(0) })
-busy(func() { g.chat(0, "안녕") })
+busy(func() { g.chat(0, "", "안녕") })
 busy(func() { g.unregister(g.register(0)) })
 busy(func() { h.reap(time.Now()) })
 busy(func() { _, _ = h.create(2, 1, 1) })
 wg.Wait()
+
+@ 관전자에 관해 지켜야 할 것은 세 가지다: 자리를 {\bf 쓰지 않고}, 남의 손패를
+{\bf 못 보고}, 수를 {\bf 못 둔다}. 엔진 쪽 가림막은 이미 엔진 시험이 지키므로
+여기서는 서버가 그 가림막을 제대로 불러 쓰는지, 그리고 자리 셈이 어긋나지
+않는지를 본다.
+@<관전자 시험@>=
+func TestSpectatorTakesNoSeat(t *testing.T) {
+	h := newHub()
+	code, err := h.create(2, 1, 7) // 자리 둘 가운데 하나는 봇
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.join(code, "철수"); err != nil {
+		t.Fatal(err) // 남은 사람 자리 하나를 채운다
+	}
+	@<가득 찬 방에도 관전은 붙는지 본다@>@;
+	@<관전자 뷰에 손패가 없는지 본다@>@;
+}
+
+@ 자리가 다 찼으니 참가는 실패해야 하고, 관전은 그래도 되어야 한다. 관전이
+자리를 잡아 버리면 이 시험이 첫 줄에서 걸린다.
+@<가득 찬 방에도 관전은 붙는지 본다@>=
+if _, _, err := h.join(code, "늦은이"); err == nil {
+	t.Error("자리가 다 찼는데 참가가 성공함")
+}
+tok, err := h.watch(code, "구경꾼")
+if err != nil {
+	t.Fatalf("가득 찬 방에 관전이 막힘: %v", err)
+}
+g, player, ok := h.session(tok)
+if !ok || player != bz.Spectator {
+	t.Fatalf("관전 세션이 이상함: player=%d ok=%v", player, ok)
+}
+if h.sessionName(tok) != "구경꾼" {
+	t.Errorf("관전자 이름이 %q", h.sessionName(tok))
+}
+
+@ 관전자 뷰에는 어느 손패도 없어야 하고 둘 수 있는 수도 없어야 한다. 방에
+붙은 사람의 뷰와 나란히 놓고 견주면 차이가 또렷하다.
+@<관전자 뷰에 손패가 없는지 본다@>=
+sv, pv := g.view(player), g.view(0)
+if len(pv.Players[0].Hand) == 0 {
+	t.Error("자리 있는 이가 제 손패를 못 봄")
+}
+for i, p := range sv.Players {
+	if p.Hand != nil {
+		t.Errorf("관전자에게 %d번 손패가 보임: %v", i, p.Hand)
+	}
+}
+if sv.Legal != nil {
+	t.Errorf("관전자에게 둘 수 있는 수가 있음: %v", sv.Legal)
+}
 
 @* 색인.

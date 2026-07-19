@@ -637,7 +637,7 @@ func (a Action) tradeString() string {
 여기 한 곳에만 적힌다. 자기 차례가 아니거나 게임이 끝났으면 빈 목록이다.
 @<합법수 열거@>=
 func (s *State) Legal(player int) []Action {
-	if s.Stage == GameOver || player != s.ToAct() {
+	if player == Spectator || s.Stage == GameOver || player != s.ToAct() {
 		return nil
 	}
 	switch s.Stage {
@@ -1487,9 +1487,15 @@ type View struct {
 	Scores       []int         `json:"scores,omitempty"`
 }
 
-@ |View|는 한 플레이어의 시점으로 상태를 추린다. 공개 정보를 채우고, 각
-플레이어를 시점에 맞게 가리고, 대기 중인 제안과 (끝났다면) 점수를 붙인다.
+@ 자리를 맡지 않은 {\it 관전자\/}도 뷰를 받을 수 있어야 한다. 그 자리 번호가
+|Spectator|다. 뷰 만드는 코드에 갈래를 더할 필요는 없다---어느 자리와도 같지
+않은 번호이므로, ``내 것만 보여 준다''는 판정이 죄다 거짓이 되어 손패가 하나도
+채워지지 않는다. 가림막이 저절로 가장 촘촘하게 쳐지는 셈이다. 다만 그것이
+{\bf 우연이 아니라 약속}이 되도록 |Legal|에 |Spectator|를 못 박아 두었고
+(자리가 없으니 둘 수 있는 수도 없다), 시험으로도 지킨다.
 @<플레이어 뷰@>=
+const Spectator = -1 // 자리를 맡지 않고 보기만 하는 이
+
 func (s *State) View(player int) View {
 	v := View{
 		You:          player,
@@ -1575,6 +1581,7 @@ func Catalog() []BeanInfoView {
 package bohnanza
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/rand/v2"
 	"testing"
@@ -1789,6 +1796,58 @@ for _, e := range cat {
 }
 if len(cat) != int(NumBeans) || total != TotalCards {
 	t.Errorf("도감이 이상함: %d종 %d장", len(cat), total)
+}
+
+@ 관전자의 뷰는 {\bf 아무의 손패도} 담아서는 안 된다. 이것이 관전 모드에서
+가장 중요한 성질이다---관전자가 남의 패를 보면 플레이어에게 흘릴 수 있고,
+그러면 가림막 전체가 뜻을 잃는다. JSON으로 부호화한 {\it 바이트열까지\/}
+훑어 확인한다. 뷰 구조체만 보면 될 것 같지만, 새 칸을 무심코 더했을 때
+바이트를 세는 쪽이 더 잘 잡아낸다.
+@<뷰 가림 시험@>=
+func TestSpectatorSeesNoHands(t *testing.T) {
+	s, err := New(3, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := s.View(Spectator)
+	@<관전자 뷰에 손패도 합법수도 없는지 본다@>@;
+	@<관전자가 공개 정보는 다 보는지 본다@>@;
+}
+
+@ @<관전자 뷰에 손패도 합법수도 없는지 본다@>=
+for i, p := range v.Players {
+	if p.Hand != nil {
+		t.Errorf("관전자에게 %d번 손패가 새어 나감: %v", i, p.Hand)
+	}
+	if p.IsYou {
+		t.Errorf("관전자가 %d번을 제 자리로 앎", i)
+	}
+}
+if v.Legal != nil {
+	t.Errorf("관전자에게 둘 수 있는 수가 생김: %v", v.Legal)
+}
+if v.You != Spectator {
+	t.Errorf("관전자의 You가 %d", v.You)
+}
+
+@ 손패는 안 보여도 공개 정보는 다 보여야 관전이 된다. 그리고 JSON 바이트열에
+어느 손패 카드도 실려 나가지 않았는지, 손패 장수의 합만큼도 새지 않았는지
+본다---|hand| 이름표 자체가 나타나지 않아야 한다.
+@<관전자가 공개 정보는 다 보는지 본다@>=
+if len(v.Players) != 3 || v.DeckCount != len(s.Deck) {
+	t.Errorf("관전자가 공개 정보를 못 봄: %d명, 덱 %d", len(v.Players), v.DeckCount)
+}
+for i, p := range v.Players {
+	if p.HandCount != StartingHand {
+		t.Errorf("관전자가 %d번 손패 장수를 못 봄: %d", i, p.HandCount)
+	}
+}
+b, err := json.Marshal(v)
+if err != nil {
+	t.Fatal(err)
+}
+if bytes.Contains(b, []byte(`"hand"`)) {
+	t.Errorf("관전자 JSON에 hand 칸이 실림: %s", b)
 }
 
 @ 한 장짜리 밭 수확 제한을 콕 집어 본다. 0번 밭이 한 장, 1번 밭이 두 장이면

@@ -444,7 +444,7 @@ func (a Action) tradeString() string {
 
 //line bohnanza.w:639
 func (s *State) Legal(player int) []Action {
-	if s.Stage == GameOver || player != s.ToAct() {
+	if player == Spectator || s.Stage == GameOver || player != s.ToAct() {
 		return nil
 	}
 	switch s.Stage {
@@ -1160,7 +1160,9 @@ type View struct {
 	Scores       []int         `json:"scores,omitempty"`
 }
 
-//line bohnanza.w:1493
+//line bohnanza.w:1497
+const Spectator = -1 // 자리를 맡지 않고 보기만 하는 이
+
 func (s *State) View(player int) View {
 	v := View{
 		You:          player,
@@ -1178,7 +1180,7 @@ func (s *State) View(player int) View {
 		v.Players = append(v.Players, s.playerView(i, p, player))
 	}
 
-//line bohnanza.w:1515
+//line bohnanza.w:1521
 	if s.Pending != nil {
 		pr := s.Pending
 		v.Pending = &ProposalView{From: pr.From, To: pr.To,
@@ -1190,11 +1192,11 @@ func (s *State) View(player int) View {
 		v.Scores = s.Scores()
 	}
 
-//line bohnanza.w:1510
+//line bohnanza.w:1516
 	return v
 }
 
-//line bohnanza.w:1529
+//line bohnanza.w:1535
 func (s *State) playerView(i int, p *Player, viewer int) PlayerView {
 	pv := PlayerView{
 		Index:     i,
@@ -1212,12 +1214,12 @@ func (s *State) playerView(i int, p *Player, viewer int) PlayerView {
 	return pv
 }
 
-//line bohnanza.w:1548
+//line bohnanza.w:1554
 func (s *State) ViewJSON(player int) ([]byte, error) {
 	return json.Marshal(s.View(player))
 }
 
-//line bohnanza.w:1555
+//line bohnanza.w:1561
 type BeanInfoView struct {
 	ID    Bean   `json:"id"`
 	Name  string `json:"name"`
