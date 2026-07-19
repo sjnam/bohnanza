@@ -15,7 +15,7 @@ import (
 
 var in = bufio.NewReader(os.Stdin)
 
-//line cli/cli.w:146
+//line cli/cli.w:147
 func fieldStr(f bz.FieldView) string {
 	if f.Count == 0 {
 		return "[ · ]"
@@ -23,7 +23,7 @@ func fieldStr(f bz.FieldView) string {
 	return fmt.Sprintf("[%s×%d]", f.Crop.Name(), f.Count)
 }
 
-//line cli/cli.w:155
+//line cli/cli.w:156
 func cardNames(cs []bz.Bean) string {
 	if len(cs) == 0 {
 		return "없음"
@@ -35,7 +35,7 @@ func cardNames(cs []bz.Bean) string {
 	return strings.Join(names, ",")
 }
 
-//line cli/cli.w:170
+//line cli/cli.w:171
 func drawBoard(v bz.View) {
 	fmt.Printf("\n───────── %s 단계 · %d번 플레이어 차례 ─────────\n",
 		v.PhaseName, v.ToAct)
@@ -51,7 +51,7 @@ func drawBoard(v bz.View) {
 		fmt.Println()
 	}
 
-//line cli/cli.w:192
+//line cli/cli.w:193
 	if v.Pending != nil {
 		pr := v.Pending
 		give := append(append([]bz.Bean{}, pr.GiveHand...), pr.GiveFaceUp...)
@@ -59,9 +59,9 @@ func drawBoard(v bz.View) {
 			pr.From, cardNames(give), cardNames(pr.GetHand))
 	}
 
-//line cli/cli.w:185
+//line cli/cli.w:186
 
-//line cli/cli.w:203
+//line cli/cli.w:204
 	if len(v.FaceUp) > 0 {
 		fmt.Print("  공개 카드: ")
 		for i, c := range v.FaceUp {
@@ -86,10 +86,10 @@ func drawBoard(v bz.View) {
 		fmt.Println()
 	}
 
-//line cli/cli.w:186
+//line cli/cli.w:187
 }
 
-//line cli/cli.w:232
+//line cli/cli.w:233
 func chooseAction(v bz.View) (bz.Action, bool) {
 	acts := v.Legal
 	fmt.Println("  둘 수 있는 수:")
@@ -139,10 +139,10 @@ func main() {
 		os.Exit(1)
 	}
 
-//line cli/cli.w:82
+//line cli/cli.w:83
 	bots := make([]bot.Policy, players)
 	for i := humans; i < players; i++ {
-		bots[i] = bot.NewGreedy()
+		bots[i] = bot.NewStrategist()
 	}
 	rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 
@@ -150,7 +150,7 @@ func main() {
 	fmt.Printf("보난자 시작! %d명(사람 %d, 봇 %d), 씨앗 %d\n",
 		players, humans, players-humans, seed)
 
-//line cli/cli.w:93
+//line cli/cli.w:94
 	for !s.Over() {
 		actor := s.ToAct()
 		if actor < 0 {
@@ -158,7 +158,7 @@ func main() {
 		}
 		view := s.View(actor)
 
-//line cli/cli.w:106
+//line cli/cli.w:107
 		var act bz.Action
 		if p := bots[actor]; p != nil {
 			act = p.Act(view, rng)
@@ -181,12 +181,12 @@ func main() {
 			fmt.Println("  →", e)
 		}
 
-//line cli/cli.w:100
+//line cli/cli.w:101
 	}
 
 //line cli/cli.w:61
 
-//line cli/cli.w:130
+//line cli/cli.w:131
 	fmt.Println("\n===== 게임 종료 =====")
 	scores := s.Scores()
 	best, winner := -1, 0

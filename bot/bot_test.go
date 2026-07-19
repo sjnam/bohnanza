@@ -1,9 +1,9 @@
-//line bot/bot.w:567
+//line bot/bot.w:848
 package bot
 
 import "testing"
 
-//line bot/bot.w:580
+//line bot/bot.w:862
 func soleWinner(scores []int, seat int) bool {
 	for i, sc := range scores {
 		if i != seat && sc >= scores[seat] {
@@ -13,7 +13,7 @@ func soleWinner(scores []int, seat int) bool {
 	return true
 }
 
-//line bot/bot.w:592
+//line bot/bot.w:874
 func TestGreedyBeatsRandom(t *testing.T) {
 	const N = 300
 	gWins, rWins, ties := 0, 0, 0
@@ -48,7 +48,7 @@ func TestGreedyBeatsRandom(t *testing.T) {
 	}
 }
 
-//line bot/bot.w:629
+//line bot/bot.w:911
 func TestArenaMultiplayer(t *testing.T) {
 	const N = 300
 	for _, n := range []int{3, 4} {
@@ -77,7 +77,7 @@ func TestArenaMultiplayer(t *testing.T) {
 	}
 }
 
-//line bot/bot.w:662
+//line bot/bot.w:944
 func TestTradingRaisesScores(t *testing.T) {
 	for _, n := range []int{3, 4} {
 		cautious := avgScore(t, n, false)
@@ -91,14 +91,14 @@ func TestTradingRaisesScores(t *testing.T) {
 	}
 }
 
-//line bot/bot.w:678
+//line bot/bot.w:960
 func TestDuelHasNoTrading(t *testing.T) {
 	if a, b := avgScore(t, 2, false), avgScore(t, 2, true); a != b {
 		t.Errorf("2인 결투에 거래가 스몄다: 비거래 %.4f, 거래 %.4f", a, b)
 	}
 }
 
-//line bot/bot.w:686
+//line bot/bot.w:968
 func avgScore(t *testing.T, n int, trade bool) float64 {
 	const N = 200
 	total := 0
@@ -122,7 +122,7 @@ func avgScore(t *testing.T, n int, trade bool) float64 {
 	return float64(total) / float64(N*n)
 }
 
-//line bot/bot.w:713
+//line bot/bot.w:995
 func TestTradingVsCautious(t *testing.T) {
 	const N = 400
 	wins, mine, theirs := 0, 0, 0
@@ -138,7 +138,7 @@ func TestTradingVsCautious(t *testing.T) {
 			t.Fatal(err)
 		}
 
-//line bot/bot.w:733
+//line bot/bot.w:1015
 		if soleWinner(scores, seat) {
 			wins++
 		}
@@ -150,10 +150,10 @@ func TestTradingVsCautious(t *testing.T) {
 			}
 		}
 
-//line bot/bot.w:728
+//line bot/bot.w:1010
 	}
 
-//line bot/bot.w:751
+//line bot/bot.w:1033
 	mineAvg, theirsAvg := float64(mine)/N, float64(theirs)/(3*N)
 	t.Logf("거래 봇 평균 %.2f, 비거래 봇 평균 %.2f, 거래 봇 승률 %.1f%%(공정 몫 25%%)",
 		mineAvg, theirsAvg, 100*float64(wins)/N)
@@ -161,5 +161,96 @@ func TestTradingVsCautious(t *testing.T) {
 		t.Errorf("거래 봇이 비거래 봇보다 점수가 낮음: %.2f 대 %.2f", mineAvg, theirsAvg)
 	}
 
-//line bot/bot.w:730
+//line bot/bot.w:1012
+}
+
+//line bot/bot.w:1047
+func TestStrategistBeatsGreedy(t *testing.T) {
+	const N = 600
+	for _, n := range []int{3, 4} {
+		base, bs, _ := oddOneOut(t, n, N, func() Policy { return NewGreedy() })
+		got, gs, os := oddOneOut(t, n, N, func() Policy { return NewStrategist() })
+		t.Logf("%d인: v2 기준선 %.1f%%(점수 %.2f) → v3 %.1f%%(점수 %.2f 대 %.2f), %+.1fpp",
+			n, base*100, bs, got*100, gs, os, (got-base)*100)
+		if got <= base {
+			t.Errorf("%d인: v3이 v2 기준선을 못 넘김 (%.3f 대 %.3f)", n, got, base)
+		}
+	}
+}
+
+//line bot/bot.w:1063
+func oddOneOut(t *testing.T, n, N int, mk func() Policy) (float64, float64, float64) {
+	wins, mine, theirs := 0, 0, 0
+	for seed := uint64(0); seed < uint64(N); seed++ {
+		ps := make([]Policy, n)
+		for i := range ps {
+			ps[i] = NewGreedy()
+		}
+		seat := int(seed) % n
+		ps[seat] = mk()
+		scores, err := Play(ps, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+//line bot/bot.w:1083
+		if soleWinner(scores, seat) {
+			wins++
+		}
+		for i, sc := range scores {
+			if i == seat {
+				mine += sc
+			} else {
+				theirs += sc
+			}
+		}
+
+//line bot/bot.w:1077
+	}
+	return float64(wins) / float64(N), float64(mine) / float64(N),
+		float64(theirs) / float64(N*(n-1))
+}
+
+//line bot/bot.w:1099
+func TestStrategistWidensTheGap(t *testing.T) {
+	const N = 400
+	_, gs, go_ := oddOneOut(t, 3, N, func() Policy { return NewGreedy() })
+	_, ss, os := oddOneOut(t, 3, N, func() Policy { return NewStrategist() })
+	t.Logf("3인: v2 자리 %.2f(상대 %.2f, 차 %+.2f), v3 자리 %.2f(상대 %.2f, 차 %+.2f)",
+		gs, go_, gs-go_, ss, os, ss-os)
+	if ss-os <= gs-go_ {
+		t.Errorf("v3이 v2보다 차이를 못 벌림: %+.2f 대 %+.2f", ss-os, gs-go_)
+	}
+}
+
+//line bot/bot.w:1117
+func TestAllStrategistShrinksThePie(t *testing.T) {
+	const N = 300
+	v2 := allSame(t, 3, N, func() Policy { return NewGreedy() })
+	v3 := allSame(t, 3, N, func() Policy { return NewStrategist() })
+	none := allSame(t, 3, N, func() Policy { return NewCautious() })
+	t.Logf("3인 평균 개인 점수 — 모두 v2 %.2f, 모두 v3 %.2f, 모두 비거래 %.2f",
+		v2, v3, none)
+	if !(none <= v3 && v3 < v2) {
+		t.Errorf("파이 크기가 예상 밖: 비거래 %.2f, v3 %.2f, v2 %.2f", none, v3, v2)
+	}
+}
+
+//line bot/bot.w:1130
+func allSame(t *testing.T, n, N int, mk func() Policy) float64 {
+	total := 0
+	for seed := uint64(0); seed < uint64(N); seed++ {
+		ps := make([]Policy, n)
+		for i := range ps {
+			ps[i] = mk()
+		}
+		scores, err := Play(ps, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, sc := range scores {
+			total += sc
+		}
+	}
+	return float64(total) / float64(N*n)
 }

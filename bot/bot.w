@@ -19,10 +19,17 @@
 거절이 끝없이 오가는 것을 막으려 {\it 거래 예산\/}을 둔다---턴마다 유한한
 제안 횟수를 정해 두고 다 쓰면 더는 제안하지 않으니, 게임은 반드시 끝난다.
 
-@ 봇의 실력을 말이 아니라 숫자로 답하려고, 정책 세 가지를 둔다: 아무 합법수나
-고르는 |Random|(실력의 밑바닥), 거래까지 하는 |Greedy|, 그리고 {\it 거래만
-빼고\/} 똑같은 |Cautious|다. 마지막 둘을 맞대어 보면 ``거래가 실력을 얼마나
-끌어올리는가''라는 물음에 곧장 답이 나온다.
+@ 봇의 실력을 말이 아니라 숫자로 답하려고, 정책 넷을 둔다. 아무 합법수나
+고르는 |Random|(실력의 밑바닥), 거래까지 하는 |Greedy|, {\it 거래만 빼고\/}
+똑같은 |Cautious|, 그리고 거래를 값어치로 재는 |Strategist|다. 가운데 둘을
+맞대면 ``거래가 실력을 얼마나 끌어올리는가''에 답이 나오고, |Strategist|를
+|Greedy|와 맞대면 ``거래를 {\it 잘\/} 하는 것이 또 얼마를 더 주는가''에
+답이 나온다.
+
+@ 이 넷은 한 번에 지은 것이 아니라 {\bf 재고 고친 자취}다. |Greedy|(v2)를 지어
+재어 보니 거래가 점수를 뚜렷이 올렸다. 그런데 승률은 안 올랐다---거래가 양의
+합이라 상대도 같이 살쪘기 때문이다. 그 측정이 |Strategist|(v3)를 낳았다.
+그래서 이 문서의 뒤쪽 절반은 앞쪽 절반에 대한 답장인 셈이다.
 
 @ 프로그램은 \GO/ 패키지 |bot|으로 나온다. 정책과 대전장은 주 출력 \.{bot.go}에,
 실력을 재는 시험은 \.{bot\_test.go}에 함께 떨어진다. 아래 조각들이 위에서
@@ -47,6 +54,8 @@ import (
 @<제안에 응답하는 수@>@;
 @<받은 콩 단계의 수@>@;
 @<결투 단계의 수@>@;
+@<값어치 재기@>@;
+@<전략 정책@>@;
 @<작은 도우미들@>@;
 @<대전장@>@;
 
@@ -459,6 +468,278 @@ func duelDrawMove(v bz.View) bz.Action {
 	return endOr(v)
 }
 
+@* 값어치 재기.
+여기부터가 v3이다. 앞의 그리디 봇(v2)은 거래를 {\it 맞는가 안 맞는가\/}라는
+예\slash 아니오로만 보았다. 그래서 콩을 넘길 때 그 콩을 기르는 {\bf 첫 번째}
+사람에게 주었다---누가 얼마나 이득을 보는지, 누가 이기고 있는지를 묻지 않았다.
+시험이 그 대가를 정확히 짚어 주었다: 거래 봇은 비거래 봇보다 점수가 뚜렷이
+높은데도 승률은 공정 몫을 넘지 못한다. 거래가 {\bf 양의 합}이라, 내가 넘긴 콩이
+받는 쪽도 살찌워 {\it 차이\/}가 남지 않기 때문이다.
+
+@ 그러니 v3에 필요한 것은 예\slash 아니오가 아니라 {\bf 눈금}이다. 콩 한 알이
+누구에게 얼마나 이로운지를 코인 단위의 수로 잴 수 있으면, ``내 이득에서 상대
+이득을 뺀 것''을 따져 덜 이롭게 하는 쪽으로 넘길 수 있다.
+
+눈금의 밑감은 콩미터다. 콩 |b|가 |n|장 있는 밭에 한 알을 더할 때의 값어치를,
+{\it 다음 코인 칸까지 한 알당 평균 얼마가 오르는가\/}로 잰다. 다음 칸이 세 알
+남았고 거기서 코인이 하나 오른다면 한 알당 $1/3$이다. 더 심어도 코인이 안 오르는
+익은 밭은 0이다. 엔진의 |Coins|만 쓰므로 콩미터 표를 따로 들여다볼 필요가 없다.
+@<값어치 재기@>=
+func step(b bz.Bean, n int) float64 {
+	need := nextNeed(b, n)
+	if need == 0 {
+		return 0 // 익은 밭: 더 심어도 안 오른다
+	}
+	return float64(b.Coins(need)-b.Coins(n)) / float64(need-n)
+}
+
+@ |nextNeed|는 |n|장보다 많이 심어야 코인이 오르는 첫 장수를 찾는다. 없으면
+0이다. 콩미터의 맨 꼭대기 칸이 13장(왁스콩)이므로, 넉넉히 스물넷까지만 본다.
+@<값어치 재기@>=
+func nextNeed(b bz.Bean, n int) int {
+	for k := n + 1; k <= n+24; k++ {
+		if b.Coins(k) > b.Coins(n) {
+			return k
+		}
+	}
+	return 0
+}
+
+@ 이제 콩 한 알이 {\it 어떤 사람에게\/} 얼마나 이로운지를 잰다. 그 콩을 기르는
+밭이 있으면 거기 더할 때의 값어치가 답이고, 없으면 빈 밭에 새로 심는 값어치다---
+다만 빈 밭은 귀하니 반만 쳐 준다. 기르는 밭도 빈 밭도 없으면 그 콩은 이롭기는
+커녕 짐이므로 0이다.
+@<값어치 재기@>=
+const newFieldRate = 0.5 // 빈 밭을 새로 여는 값어치는 반만 친다
+
+func valueTo(p bz.PlayerView, b bz.Bean) float64 {
+	best, empty := 0.0, false
+	for _, f := range p.Fields {
+		if f.Count == 0 {
+			empty = true
+		} else if f.Crop == b {
+			if s := step(b, f.Count); s > best {
+				best = s
+			}
+		}
+	}
+	if best > 0 {
+		return best
+	}
+	if empty {
+		return step(b, 0) * newFieldRate
+	}
+	return 0
+}
+
+@ 누가 이기고 있는지도 알아야 한다. 남의 밭과 코인은 모두에게 보이는 공개
+정보이므로, 엔진의 최종 점수와 똑같은 셈을 뷰만으로 할 수 있다---가려진 정보를
+훔쳐보지 않는다.
+@<값어치 재기@>=
+func standing(p bz.PlayerView) int {
+	n := p.Coins
+	for _, f := range p.Fields {
+		n += f.Crop.Coins(f.Count)
+	}
+	return n
+}
+
+func leader(v bz.View) int {
+	best, top := -1, -1
+	for i, p := range v.Players {
+		if s := standing(p); s > top {
+			best, top = i, s
+		}
+	}
+	return best
+}
+
+@* 전략 정책.
+v3 봇이다. 심기\slash 받은 콩\slash 결투 단계는 v2와 똑같이 두고---거기서는
+어림짐작이 이미 충분하다---{\bf 거래에 관한 두 판단만} 갈아 끼운다: 누구에게
+무엇을 넘길지 고르는 |tradeMove|와, 남의 제안을 받을지 보는 |respondMove|다.
+@<전략 정책@>=
+type Strategist struct {
+	budget int
+}
+
+func NewStrategist() *Strategist { return &Strategist{} }
+
+func (g *Strategist) Act(v bz.View, rng *rand.Rand) bz.Action {
+	switch v.Stage {
+	case bz.PhasePlant:
+		g.budget = 2 * len(v.Players)
+		return plantMove(v)
+	case bz.PhaseTrade:
+		if v.Pending != nil {
+			return respondStrategic(v)
+		}
+		return g.tradeMove(v)
+	case bz.PhaseHarvestGifts:
+		return giftMove(v)
+	case bz.PhaseOffer:
+		return offerMove(v)
+	case bz.PhaseDuelDraw:
+		return duelDrawMove(v)
+	}
+	return v.Legal[0]
+}
+
+@ 거래 단계의 뼈대는 v2와 같다. 익은 밭을 거두고, 내 밭과 맞는 공개 카드를
+집고, 빈 밭에 놓는다. 거래는 여전히 {\bf 마지막 수단}이다---여기까지 왔다는
+것은 빈 밭이 없어 값진 밭을 헐어야 할 처지라는 뜻이다. 다른 것은 그 마지막
+수단을 {\it 어떻게\/} 쓰느냐뿐이다.
+@<전략 정책@>=
+func (g *Strategist) tradeMove(v bz.View) bz.Action {
+	me := v.Players[v.You]
+	@<익은 밭이 있으면 거둔다@>@;
+	@<내 밭과 맞는 공개 카드를 집는다@>@;
+	@<공개 카드를 빈 밭에 놓는다@>@;
+	if g.budget > 0 {
+		if a, ok := planTrade(v); ok {
+			g.budget--
+			return a
+		}
+	}
+	@<자리가 없으면 밭을 거두어 비운다@>@;
+	return endOr(v)
+}
+
+@ 여기가 v3의 핵심이다. 넘길 수 있는 공개 카드와 받아 줄 만한 상대의 모든
+짝을 훑어, {\bf 우위}가 가장 큰 하나를 고른다. 우위란 내가 얻는 값어치에서
+상대가 얻는 값어치를 뺀 것이다. v2가 첫 번째 상대를 집었던 자리에서, v3은
+{\it 가장 덜 이롭게 하는\/} 상대를 고른다.
+
+그리고 하나 더---{\bf 우위가 밑지는 거래는 아예 하지 않는다}. v2는 마지막
+수단에 몰리면 어떤 거래든 했다. 밭을 헐지 않는 것이 늘 이득이라고 여겼기
+때문이다. 하지만 상대를 나보다 더 살찌우는 거래라면, 차라리 내가 밭을 헐고
+마는 편이 낫다---손해를 보더라도 {\it 차이\/}는 지키는 것이다.
+
+문턱은 어림한 값이 아니라 뜻 그대로 0이다. 다만 부등호가 |>|가 아니라 |>=|인
+것에 뜻이 있다. 우위가 {\it 꼭 0인\/} 거래는 받아들인다---|step|이 $1/2$나 $1/3$
+같은 작은 분수라 양쪽 값어치가 딱 맞아떨어지는 일이 잦은데, 그런 거래도 밭을
+헐지 않고 카드를 털어내는 값어치는 있기 때문이다. 그 값어치는 우위 셈에 들어
+있지 않으므로, 비기면 거래하는 쪽으로 기울이는 것이 옳다. 재어 보면 차이가
+작지 않다: |>|로 두면 3인 승률이 $46\%$에서 $40\%$로 내려앉는다.
+@<전략 정책@>=
+func planTrade(v bz.View) (bz.Action, bool) {
+	me, lead := v.Players[v.You], leader(v)
+	var best bz.Action
+	top, ok := 0.0, false
+	for _, b := range v.FaceUp {
+		if matchesField(me, b) {
+			continue // 내가 기르는 콩이면 넘기지 않고 내가 집는다
+		}
+		for o := range v.Players {
+			@<상대 |o|에게 |b|를 넘길 때의 우위를 잰다@>@;
+		}
+	}
+	return best, ok
+}
+
+@ 상대가 그 콩을 안 기르면 어차피 수락하지 않으니 건너뛴다. 되받을 콩이
+있으면 그 값어치가 내 이득이고, 기부라면 내 이득은 0이다. 상대의 이득은
+그 콩이 상대에게 주는 값어치인데, {\bf 선두라면 두 배로 친다}---앞선 사람을
+살찌우는 것은 그만큼 더 아프기 때문이다.
+@<상대 |o|에게 |b|를 넘길 때의 우위를 잰다@>=
+if o == v.You || !matchesField(v.Players[o], b) {
+	continue
+}
+gain := 0.0
+r, want := askBean(me, v.Players[o])
+if want {
+	gain = valueTo(me, r)
+}
+cost := valueTo(v.Players[o], b)
+if o == lead {
+	cost *= 2
+}
+if edge := gain - cost; edge >= 0 && (!ok || edge > top) {
+	best, top, ok = tradeAction(v.You, o, b, r, want), edge, true
+}
+
+@ 우위가 가장 큰 짝을 액션으로 빚는다. 되받을 콩이 있으면 교환이고, 없으면
+기부다.
+@<전략 정책@>=
+func tradeAction(me, to int, give, get bz.Bean, want bool) bz.Action {
+	a := bz.Action{Kind: bz.ProposeTrade, Actor: me, To: to,
+		GiveFaceUp: []bz.Bean{give}}
+	if want {
+		a.GetHand = []bz.Bean{get}
+	}
+	return a
+}
+
+@ 되받을 콩도 눈금으로 고른다. v2는 {\it 가장 많이 쌓인\/} 밭의 콩을 달라
+했지만, 많이 쌓였다고 값진 것은 아니다---다음 코인 칸이 아직 멀 수도 있다.
+v3은 한 알 더할 때 실제로 가장 많이 오르는 콩을 고른다. 익은 밭은 |step|이
+0이라 저절로 빠지고, 상대가 기르는 콩은 선뜻 내줄 리 없으니 뺀다.
+@<전략 정책@>=
+func askBean(me, opp bz.PlayerView) (bz.Bean, bool) {
+	var best bz.Bean
+	top, ok := 0.0, false
+	for _, f := range me.Fields {
+		if f.Count == 0 || matchesField(opp, f.Crop) {
+			continue
+		}
+		if s := step(f.Crop, f.Count); s > top {
+			best, top, ok = f.Crop, s, true
+		}
+	}
+	return best, ok
+}
+
+@ 남의 제안에 답할 때도 같은 눈금을 쓴다. v2는 ``내 밭과 맞는 콩의 개수''를
+세어 견주었지만, 개수는 값어치가 아니다. v3은 내가 얻는 값어치와 잃는 값어치를
+재고, {\bf 제안한 쪽이 얻는 것까지} 뺀다---내가 조금 이득이어도 상대가 크게
+이득이면 판을 밀어 주는 셈이기 때문이다.
+@<전략 정책@>=
+func respondStrategic(v bz.View) bz.Action {
+	yes := worthIt(v)
+	if a, ok := pick(v.Legal, func(a bz.Action) bool {
+		return a.Kind == bz.RespondTrade && a.Accept == yes
+	}); ok {
+		return a
+	}
+	return v.Legal[0]
+}
+
+@ 견주는 것은 {\bf 두 사람의 순이득}이다. 내 순이득은 받는 값어치에서 내주는
+값어치를 뺀 것이고, 상대의 순이득도 마찬가지다---다만 상대가 내미는 공개 카드는
+상 위의 것이지 제 손패가 아니므로 상대의 손실로 치지 않는다. 내가 이득이면서
+상대보다 덜 밑지지 않을 때 수락한다. 선두가 이득을 보는 제안은 두 배로 깐깐하게
+본다. 요구받은 콩을 쥐고 있지 않으면 애초에 수락할 수 없다.
+
+여기서 순이득끼리 견주는 것이 중요하다. 처음에는 내 순이득을 상대의 {\it 총\/}
+이득과 견주었는데, 그러면 서로 이로운 거래가 죄다 걸러져 v3끼리 둔 판에서
+거래가 한 건도 성사되지 않았다(점수가 비거래 봇과 소수점까지 똑같이 나와
+들통났다). 서로 이로운 것이 나쁜 것이 아니다---나보다 상대가 더 이로운 것이
+나쁜 것이다.
+@<전략 정책@>=
+func worthIt(v bz.View) bool {
+	me, pr := v.Players[v.You], v.Pending
+	if !holds(me.Hand, pr.GetHand) {
+		return false
+	}
+	from := v.Players[pr.From]
+	mine := sumValue(me, pr.GiveHand) + sumValue(me, pr.GiveFaceUp) -
+		sumValue(me, pr.GetHand)
+	theirs := sumValue(from, pr.GetHand) - sumValue(from, pr.GiveHand)
+	if theirs > 0 && pr.From == leader(v) {
+		theirs *= 2
+	}
+	return mine > 0 && mine >= theirs
+}
+
+@ @<전략 정책@>=
+func sumValue(p bz.PlayerView, bs []bz.Bean) float64 {
+	t := 0.0
+	for _, b := range bs {
+		t += valueTo(p, b)
+	}
+	return t
+}
+
 @* 작은 도우미들.
 정책들이 함께 쓰는 잔손질을 모은다. |pick|은 합법수 목록에서 조건에 맞는 첫
 수를 찾고, |hasKind|는 어떤 종류의 수가 목록에 있는지 본다.
@@ -573,6 +854,7 @@ import "testing"
 @<여러 명 대전 시험@>@;
 @<거래가 점수를 올리는지 시험@>@;
 @<거래 봇 대 비거래 봇 시험@>@;
+@<전략 봇 시험@>@;
 
 @ 점수 목록에서 어느 자리가 홀로 최고점인지 본다. 공동 최고점은 무승부라
 승리로 세지 않는다.
@@ -753,6 +1035,114 @@ t.Logf("거래 봇 평균 %.2f, 비거래 봇 평균 %.2f, 거래 봇 승률 %.1
 	mineAvg, theirsAvg, 100*float64(wins)/N)
 if mineAvg <= theirsAvg {
 	t.Errorf("거래 봇이 비거래 봇보다 점수가 낮음: %.2f 대 %.2f", mineAvg, theirsAvg)
+}
+
+@* 전략 봇 시험.
+v3이 v2보다 나은지 재려면 견줄 {\it 기준선\/}을 제대로 잡아야 한다. ``공정 몫
+$1/n$''은 기준선이 될 수 없다---|soleWinner|가 공동 최고점을 승리로 세지 않아,
+똑같은 봇끼리 두어도 승률은 $1/n$에 못 미치기 때문이다(3인에서 $33\%$가 아니라
+$29\%$쯤 나온다). 그러니 {\bf v2 하나를 v2들 사이에 앉힌 승률}을 같은 자리에서
+재어 기준선으로 삼고, 그 자리에 v3을 앉혔을 때 승률이 오르는지 본다.
+@<전략 봇 시험@>=
+func TestStrategistBeatsGreedy(t *testing.T) {
+	const N = 600
+	for _, n := range []int{3, 4} {
+		base, bs, _ := oddOneOut(t, n, N, func() Policy { return NewGreedy() })
+		got, gs, os := oddOneOut(t, n, N, func() Policy { return NewStrategist() })
+		t.Logf("%d인: v2 기준선 %.1f%%(점수 %.2f) → v3 %.1f%%(점수 %.2f 대 %.2f), %+.1fpp",
+			n, base*100, bs, got*100, gs, os, (got-base)*100)
+		if got <= base {
+			t.Errorf("%d인: v3이 v2 기준선을 못 넘김 (%.3f 대 %.3f)", n, got, base)
+		}
+	}
+}
+
+@ |oddOneOut|은 v2들 사이에 정책 하나를 홀로 앉혀 |N|판을 두고, 그 자리의
+승률과 양쪽 평균 점수를 낸다. 자리를 씨앗마다 돌려 자리 이점을 지운다.
+@<전략 봇 시험@>=
+func oddOneOut(t *testing.T, n, N int, mk func() Policy) (float64, float64, float64) {
+	wins, mine, theirs := 0, 0, 0
+	for seed := uint64(0); seed < uint64(N); seed++ {
+		ps := make([]Policy, n)
+		for i := range ps {
+			ps[i] = NewGreedy()
+		}
+		seat := int(seed) % n
+		ps[seat] = mk()
+		scores, err := Play(ps, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		@<이 판의 승패와 점수를 센다@>@;
+	}
+	return float64(wins) / float64(N), float64(mine) / float64(N),
+		float64(theirs) / float64(N*(n-1))
+}
+
+@ @<이 판의 승패와 점수를 센다@>=
+if soleWinner(scores, seat) {
+	wins++
+}
+for i, sc := range scores {
+	if i == seat {
+		mine += sc
+	} else {
+		theirs += sc
+	}
+}
+
+@ 이 시험이 재는 숫자에는 v3의 됨됨이가 그대로 드러난다. v3은 승률이 크게
+오르는 동안 {\bf 절대 점수는 오히려 낮다}---3인에서 v2 자리가 9.6점쯤인데
+v3 자리는 9.0점쯤이다. 대신 {\it 상대와의 차이\/}를 벌린다(v2는 상대와
+엇비슷하지만 v3은 1점 넘게 앞선다). 이기는 것은 점수가 아니라 차이다.
+@<전략 봇 시험@>=
+func TestStrategistWidensTheGap(t *testing.T) {
+	const N = 400
+	_, gs, go_ := oddOneOut(t, 3, N, func() Policy { return NewGreedy() })
+	_, ss, os := oddOneOut(t, 3, N, func() Policy { return NewStrategist() })
+	t.Logf("3인: v2 자리 %.2f(상대 %.2f, 차 %+.2f), v3 자리 %.2f(상대 %.2f, 차 %+.2f)",
+		gs, go_, gs-go_, ss, os, ss-os)
+	if ss-os <= gs-go_ {
+		t.Errorf("v3이 v2보다 차이를 못 벌림: %+.2f 대 %+.2f", ss-os, gs-go_)
+	}
+}
+
+@ 마지막으로 이 됨됨이의 {\bf 값}도 재어 둔다. v3끼리만 두면 서로 밑지는
+거래를 마다하므로 판 전체의 점수가 폭삭 내려앉는다---3인에서 모두 v2면 평균
+9.7점인데 모두 v3이면 4.4점으로, 거래를 아예 안 하는 봇(4.0점)에 가깝다.
+거래가 양의 합이라는 말의 뒷면이다: 모두가 제 몫만 지키면 나눌 것 자체가
+줄어든다. v3이 {\it 세다\/}는 것과 v3들끼리의 판이 {\it 재미있다\/}는 것은
+다른 말이고, 이 시험은 그 구분을 숫자로 남겨 둔다.
+@<전략 봇 시험@>=
+func TestAllStrategistShrinksThePie(t *testing.T) {
+	const N = 300
+	v2 := allSame(t, 3, N, func() Policy { return NewGreedy() })
+	v3 := allSame(t, 3, N, func() Policy { return NewStrategist() })
+	none := allSame(t, 3, N, func() Policy { return NewCautious() })
+	t.Logf("3인 평균 개인 점수 — 모두 v2 %.2f, 모두 v3 %.2f, 모두 비거래 %.2f",
+		v2, v3, none)
+	if !(none <= v3 && v3 < v2) {
+		t.Errorf("파이 크기가 예상 밖: 비거래 %.2f, v3 %.2f, v2 %.2f", none, v3, v2)
+	}
+}
+
+@ @<전략 봇 시험@>=
+func allSame(t *testing.T, n, N int, mk func() Policy) float64 {
+	total := 0
+	for seed := uint64(0); seed < uint64(N); seed++ {
+		ps := make([]Policy, n)
+		for i := range ps {
+			ps[i] = mk()
+		}
+		scores, err := Play(ps, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, sc := range scores {
+			total += sc
+		}
+	}
+	return float64(total) / float64(N*n)
 }
 
 @* 색인.

@@ -75,13 +75,14 @@ if len(os.Args) > 3 {
 	}
 }
 
-@ 사람이 맡지 않은 높은 자리에 그리디 봇을 앉힌다. |bots[p]|가 |nil|이면
-$p$번은 사람 자리다. 봇은 결정론적이라 난수원을 쓰지 않지만, 정책 계약이
-난수원을 받으므로 하나 마련해 둔다.
+@ 사람이 맡지 않은 높은 자리에 봇을 앉힌다. 봇 패키지의 정책 가운데 가장
+센 전략 봇(v3)을 쓴다---사람과 겨루는 자리이니 제일 나은 것을 앉히는 편이
+맞다. |bots[p]|가 |nil|이면 $p$번은 사람 자리다. 봇은 결정론적이라 난수원을
+쓰지 않지만, 정책 계약이 난수원을 받으므로 하나 마련해 둔다.
 @<봇을 앉힌다@>=
 bots := make([]bot.Policy, players)
 for i := humans; i < players; i++ {
-	bots[i] = bot.NewGreedy()
+	bots[i] = bot.NewStrategist()
 }
 rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 

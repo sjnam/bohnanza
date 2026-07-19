@@ -317,12 +317,12 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	return code, nil
 }
 
-@ 봇 자리는 |claimed|를 미리 참으로 두어 사람이 잡지 못하게 막고, 그리디
-정책을 심고, 봇마다 이름을 붙인다. 그러면 |claim|은 낮은 번호의 사람 자리부터
-배정한다.
+@ 봇 자리는 |claimed|를 미리 참으로 두어 사람이 잡지 못하게 막고, 전략
+정책(v3)을 심고, 봇마다 이름을 붙인다. 그러면 |claim|은 낮은 번호의 사람
+자리부터 배정한다.
 @<봇을 높은 자리에 앉힌다@>=
 for p := players - bots; p < players; p++ {
-	g.bots[p] = bot.NewGreedy()
+	g.bots[p] = bot.NewStrategist()
 	g.claimed[p] = true
 	g.names[p] = fmt.Sprintf("봇 %d", p-(players-bots)+1)
 }

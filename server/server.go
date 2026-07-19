@@ -218,7 +218,7 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 
 //line server/server.w:324
 	for p := players - bots; p < players; p++ {
-		g.bots[p] = bot.NewGreedy()
+		g.bots[p] = bot.NewStrategist()
 		g.claimed[p] = true
 		g.names[p] = fmt.Sprintf("봇 %d", p-(players-bots)+1)
 	}
