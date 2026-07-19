@@ -3,7 +3,7 @@
 \input kotexgweb
 
 \datethis
-\def\title{보난자 봇}
+\def\title{보난자 AI}
 
 @* 들어가며.
 이 문서는 보난자 게임 엔진(\.{bohnanza})을 스스로 굴리는 {\it 봇\/}이다. 봇은
@@ -31,11 +31,11 @@
 합이라 상대도 같이 살쪘기 때문이다. 그 측정이 |Strategist|(v3)를 낳았다.
 그래서 이 문서의 뒤쪽 절반은 앞쪽 절반에 대한 답장인 셈이다.
 
-@ 프로그램은 \GO/ 패키지 |bot|으로 나온다. 정책과 대전장은 주 출력 \.{bot.go}에,
-실력을 재는 시험은 \.{bot\_test.go}에 함께 떨어진다. 아래 조각들이 위에서
+@ 프로그램은 \GO/ 패키지 |ai|으로 나온다. 정책과 대전장은 주 출력 \.{ai.go}에,
+실력을 재는 시험은 \.{ai\_test.go}에 함께 떨어진다. 아래 조각들이 위에서
 아래로 쌓여 봇을 이룬다.
 @c
-package bot
+package ai
 
 import (
 	"fmt"
@@ -844,8 +844,8 @@ if !s.Over() {
 실력을 얼마나 끌어올리는가?} 시험은 재현 가능하도록 씨앗을 고정해 수백 판을
 돌리고, 승률과 평균 점수를 |t.Logf|로 적어 둔다---%
 {\tt go test -v}로 그 숫자를 볼 수 있다.
-@(bot_test.go@>=
-package bot
+@(ai_test.go@>=
+package ai
 
 import "testing"
 

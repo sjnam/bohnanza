@@ -38,7 +38,7 @@ $$\vbox{\halign{\indent\bf#\hfil&\quad#\hfil\cr
 이 갈래를 |Variant| 하나에 값으로 모아 두었으므로, 규칙의 ``인원에 따라 무엇이
 다른가''는 한 곳에서만 읽으면 된다.
 
-@ 프로그램은 \GO/ 패키지 |bohnanza|로 나온다. \.{gtangle}을 실행하면 주 출력
+@ 프로그램은 \GO/ 패키지 |engine|으로 나온다. \.{gtangle}을 실행하면 주 출력
 \.{bohnanza.go}와 시험 파일 \.{bohnanza\_test.go}가 함께 떨어진다. 아래
 조각들이 위에서 아래로 쌓여 엔진을 이룬다.
 @c
@@ -1093,7 +1093,7 @@ func (s *State) applyBuyField(a Action) ([]Event, error) {
 넘어갈 때 기본 규칙은 덱에서 두 장을 뒤집어 거래 단계로 가고, 결투는 세 장을
 뽑아 나누기 단계로 간다. 결투의 나누기 단계를 끝내면 그대로 턴이 넘어간다.
 @<액션 적용@>=
-func (s *State) applyEndPhase(a Action) ([]Event, error) {
+func (s *State) applyEndPhase(_ Action) ([]Event, error) {
 	switch s.Stage {
 	case PhasePlant:
 		p := s.Players[s.Active]
@@ -1577,7 +1577,7 @@ func Catalog() []BeanInfoView {
 @* 시험.
 시험은 패키지 안에서 돌며 내부 함수까지 들여다본다. 무작위성은 재현
 가능하도록 씨앗을 고정한 |math/rand/v2|의 PCG를 쓴다.
-@(bohnanza_test.go@>=
+@(engine_test.go@>=
 package engine
 
 import (

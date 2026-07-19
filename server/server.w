@@ -58,7 +58,7 @@ import (
 	"time"
 
 	bz "github.com/sjnam/bohnanza/engine"
-	"github.com/sjnam/bohnanza/bot"
+	"github.com/sjnam/bohnanza/ai"
 )
 
 @<게임 방과 구독자@>@;
@@ -87,7 +87,7 @@ type Game struct {
 	subs    map[int]*sub
 	nextID  int
 	claimed []bool       // |claimed[p]|가 참이면 |p|번 자리에 이미 임자가 있다
-	bots    []bot.Policy // |bots[p]|가 |nil|이 아니면 |p|번 자리는 봇이다
+	bots    []ai.Policy // |bots[p]|가 |nil|이 아니면 |p|번 자리는 봇이다
 	names   []string     // 자리마다의 표시 이름(사람은 참가 때, 봇은 만들 때 정함)
 	rng     *mrand.Rand  // 봇 정책에 넘길 난수원
 	chatLog []ChatMsg    // 늦게 붙는 사람에게 되보낼 최근 채팅
@@ -358,7 +358,7 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	defer h.mu.Unlock()
 	code := h.freshCode()
 	g := &Game{code: code, state: st, subs: map[int]*sub{},
-		claimed: make([]bool, players), bots: make([]bot.Policy, players),
+		claimed: make([]bool, players), bots: make([]ai.Policy, players),
 		names:    make([]string, players), lastSeen: time.Now(),
 		rng: mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
 	for p := range g.names {
@@ -374,7 +374,7 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 자리부터 배정한다.
 @<봇을 높은 자리에 앉힌다@>=
 for p := players - bots; p < players; p++ {
-	g.bots[p] = bot.NewStrategist()
+	g.bots[p] = ai.NewStrategist()
 	g.claimed[p] = true
 	g.names[p] = fmt.Sprintf("봇 %d", p-(players-bots)+1)
 }

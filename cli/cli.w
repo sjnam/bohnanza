@@ -35,7 +35,7 @@ import (
 	"time"
 
 	bz "github.com/sjnam/bohnanza/engine"
-	"github.com/sjnam/bohnanza/bot"
+	"github.com/sjnam/bohnanza/ai"
 )
 
 var in = bufio.NewReader(os.Stdin)
@@ -83,9 +83,9 @@ if len(os.Args) > 3 {
 @<봇을 앉힌다@>=
 const botPause = 500 * time.Millisecond // 사람이 읽을 틈을 주는 뜸
 
-bots := make([]bot.Policy, players)
+bots := make([]ai.Policy, players)
 for i := humans; i < players; i++ {
-	bots[i] = bot.NewStrategist()
+	bots[i] = ai.NewStrategist()
 }
 rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 

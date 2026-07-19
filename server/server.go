@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sjnam/bohnanza/bot"
+	"github.com/sjnam/bohnanza/ai"
 	bz "github.com/sjnam/bohnanza/engine"
 )
 
@@ -32,15 +32,15 @@ type Game struct {
 	state      *bz.State
 	subs       map[int]*sub
 	nextID     int
-	claimed    []bool       // |claimed[p]|가 참이면 |p|번 자리에 이미 임자가 있다
-	bots       []bot.Policy // |bots[p]|가 |nil|이 아니면 |p|번 자리는 봇이다
-	names      []string     // 자리마다의 표시 이름(사람은 참가 때, 봇은 만들 때 정함)
-	rng        *mrand.Rand  // 봇 정책에 넘길 난수원
-	chatLog    []ChatMsg    // 늦게 붙는 사람에게 되보낼 최근 채팅
-	chatSeq    int          // 채팅 순번(재접속 시 중복 걸러내기용, 절대 되감지 않음)
-	turnActive int          // 채팅이 매인 턴(활성 플레이어). 바뀌면 채팅을 비운다
-	lastSeen   time.Time    // 마지막 활동 시각. 오래 놀고 아무도 안 보면 청소부가 치운다
-	botsBusy   bool         // 봇 고루틴이 이미 돌고 있는가(둘이 겹치지 않게)
+	claimed    []bool      // |claimed[p]|가 참이면 |p|번 자리에 이미 임자가 있다
+	bots       []ai.Policy // |bots[p]|가 |nil|이 아니면 |p|번 자리는 봇이다
+	names      []string    // 자리마다의 표시 이름(사람은 참가 때, 봇은 만들 때 정함)
+	rng        *mrand.Rand // 봇 정책에 넘길 난수원
+	chatLog    []ChatMsg   // 늦게 붙는 사람에게 되보낼 최근 채팅
+	chatSeq    int         // 채팅 순번(재접속 시 중복 걸러내기용, 절대 되감지 않음)
+	turnActive int         // 채팅이 매인 턴(활성 플레이어). 바뀌면 채팅을 비운다
+	lastSeen   time.Time   // 마지막 활동 시각. 오래 놀고 아무도 안 보면 청소부가 치운다
+	botsBusy   bool        // 봇 고루틴이 이미 돌고 있는가(둘이 겹치지 않게)
 }
 
 //line server/server.w:105
@@ -239,7 +239,7 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 	defer h.mu.Unlock()
 	code := h.freshCode()
 	g := &Game{code: code, state: st, subs: map[int]*sub{},
-		claimed: make([]bool, players), bots: make([]bot.Policy, players),
+		claimed: make([]bool, players), bots: make([]ai.Policy, players),
 		names: make([]string, players), lastSeen: time.Now(),
 		rng: mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))}
 	for p := range g.names {
@@ -248,7 +248,7 @@ func (h *Hub) create(players, bots int, seed uint64) (string, error) {
 
 //line server/server.w:376
 	for p := players - bots; p < players; p++ {
-		g.bots[p] = bot.NewStrategist()
+		g.bots[p] = ai.NewStrategist()
 		g.claimed[p] = true
 		g.names[p] = fmt.Sprintf("봇 %d", p-(players-bots)+1)
 	}
