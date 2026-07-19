@@ -164,20 +164,25 @@ type Variant struct {
 	Duel       bool   // 2인 콩 결투 규칙인가
 }
 
-@ 인원별 표다. 4인은 기본 규칙이고, 3인과 2인은 규칙서의 공식 변형이다.
-2인 결투는 3인 변형을 물려받은 뒤 정원콩까지 더 빼고, 덱이 {\it 처음\/}
-바닥날 때 끝나며, 보충이 두 장이다.
+@ 인원별 표다. 규칙서의 표를 그대로 옮긴 것이라, 이 함수 하나가 곧 ``인원에
+따라 무엇이 다른가''의 전부다. 빼는 콩이 인원에 따라 갈리는 것이 눈에 띈다---
+사람이 늘수록 카드가 빨리 도니, 흔한 커피콩을 통째로 빼거나 귀한 콩들을 빼서
+판의 길이를 맞추는 것이다.
 @<변형 규칙@>=
 func variantFor(n int) Variant {
 	switch n {
-	case 2:
+	case 2: // 콩 결투
 		return Variant{Drop: []Bean{Garden, Cocoa}, StartField: 3,
 			LastPass: 1, Refill: 2, Duel: true}
 	case 3:
 		return Variant{Drop: []Bean{Cocoa}, StartField: 3,
 			LastPass: 2, Refill: 1, RoundRobin: true}
+	case 4, 5:
+		return Variant{Drop: []Bean{Coffee}, StartField: 2, ExtraField: true,
+			LastPass: 3, Refill: 1, RoundRobin: true}
 	}
-	return Variant{StartField: 2, ExtraField: true, LastPass: 3, Refill: 3}
+	return Variant{Drop: []Bean{Cocoa, Garden}, StartField: 2, ExtraField: true,
+		LastPass: 3, Refill: 1, RoundRobin: true} // 6~7인
 }
 
 func (v Variant) drops(b Bean) bool {
@@ -190,16 +195,41 @@ func (v Variant) drops(b Bean) bool {
 }
 
 @ 표의 근거를 밝혀 둔다. 개정판 규칙서는 카카오\slash 왁스\slash 커피를 더한
-열한 종 덱을 ``세 가지 새 콩'' 변형으로 두고, 그 변형에서 3인은 카카오콩을 빼고
-밭 3칸으로 시작하며 보충을 전원이 시계방향으로 한 장씩 하고, 덱이 두 번째로
-바닥날 때 끝난다고 적는다. 2인 콩 결투는 이 3인 변형을 그대로 물려받되 정원콩과
+열한 종 덱을 ``세 가지 새 콩'' 변형으로 두고, $3\sim7$인이 모두 이 변형을 쓴다.
+빼는 콩은 3인이 카카오콩, $4\sim5$인이 커피콩, $6\sim7$인이 카카오콩과 정원콩이다.
+밭은 3인만 3칸으로 시작하고(대신 더 사지 못한다) 나머지는 2칸이며, 보충은
+{\bf 전원이 활성 플레이어부터 시계방향으로 한 장씩} 돈다. 끝은 3인이 덱의 두 번째
+소진, $4$인 이상이 세 번째 소진이다. 2인 콩 결투는 3인 변형을 물려받되 정원콩과
 카카오콩을 빼고, 자기 턴에만 밭을 팔 수 있으며, 덱이 처음 바닥날 때 끝난다.
 
-여기서 한 가지는 일부러 규칙서와 다르게 두었다. 개정판은 저 보충 규칙을 3인만이
-아니라 변형 전체($3\sim7$인)에 걸겠다고 적지만, 이 엔진의 4인은 예전부터 활성
-플레이어가 세 장을 뽑는 기본 규칙으로 돌아왔고 봇의 승률 기준도 거기 맞춰 두었다.
-$2\sim3$인 변형을 {\it 더하는\/} 것이 목적이므로 4인은 건드리지 않았다. 4인까지
-개정판에 맞추고 싶다면 |variantFor|의 마지막 줄만 고치면 된다.
+$$\vbox{\halign{\indent\hfil#\hfil&&\quad\hfil#\hfil\cr
+인원& 뺀 콩& 덱& 밭& 보충& 끝\cr
+\noalign{\smallskip\hrule\smallskip}
+2& 정원\thinspace$+$\thinspace카카오& 144& 3& 활성 2장& 1번째\cr
+3& 카카오& 150& 3& 전원 1장& 2번째\cr
+$4\sim5$& 커피& 130& 2& 전원 1장& 3번째\cr
+$6\sim7$& 카카오\thinspace$+$\thinspace정원& 144& 2& 전원 1장& 3번째\cr}}$$
+
+@ 보충이 ``전원 한 장씩''인 것이 이 변형의 성격을 정한다. 사람이 많을수록 한
+턴에 덱이 그만큼 빨리 마르고, 동시에 {\it 내 차례가 아닐 때도\/} 손패가 계속
+불어난다. 심는 것은 제 턴에 한두 장뿐이니 손패는 자꾸 넘치고, 그 넘침을 푸는
+길은 거래밖에 없다---규칙서가 인원이 늘수록 거래를 더 몰아붙이도록 설계한
+셈이다. 앞서 봇 시험이 보여 준 ``거래는 양의 합''이라는 성질이 여기서 더 크게
+작용한다.
+
+@ 그래서 인원이 늘수록 {\it 1인당\/} 점수가 눈에 띄게 낮아진다. 7인전을 끝까지
+두면 우승자가 한두 코인인 판도 흔하다. 처음에는 어딘가 어긋난 줄 알고 재어
+보았는데, 그렇지 않았다: 같은 씨앗으로 3인전과 7인전을 두었더니 {\bf 판 전체의
+코인 합이 넷으로 똑같았다}. 덱과 콩미터가 그대로이니 한 판에서 나올 코인의 총량도
+그대로이고, 인원이 늘면 그것을 더 잘게 나눠 가질 뿐이다. 게다가 $4$인부터는 밭이
+두 칸이라 더미를 키울 자리도 좁다. 낮은 점수는 고장이 아니라 이 변형의 얼굴이다.
+@^점수가 낮아 보이는 까닭@>
+
+@ 예전에는 4인만 규칙서와 다르게 두었다. 이 엔진이 2\slash 3인 변형을 갖기
+전에는 4인이 곧 기본 규칙이었고, 봇의 승률 기준도 거기 맞춰 두었기 때문이다.
+$5\sim7$인을 더하면서 그 예외를 걷어냈다---규칙서가 4인과 5인을 한 묶음으로
+다루는데 둘이 갈라져 있으면 표를 읽는 사람이 먼저 걸려 넘어진다. 대신 4인의
+판 양상이 바뀌었으므로 봇의 실력 수치는 모두 다시 재었다.
 
 @* 게임 상태.
 게임의 모든 것은 |State| 하나에 담긴다. 플레이어들, 덱과 버림 더미, 거래에서
@@ -305,14 +335,16 @@ type Proposal struct {
 
 @ |New|는 인원수와 씨앗을 받아 새 게임을 차린다. 먼저 인원에 맞는 변형을
 고르고, 콩미터 테이블대로 덱을 쌓아 섞고, 각 플레이어에게 변형이 정한 만큼의
-밭을 주고 손패를 돌아가며 다섯 장씩 나눈다. 인원은 이 간단판에서 $2\sim4$명만
-받는다.
+밭을 주고 손패를 돌아가며 다섯 장씩 나눈다. 인원은 규칙서가 정한 대로
+$2\sim7$명을 받는다.
 @<게임 상태@>=
 const StartingHand = 5
+const MaxPlayers = 7
 
 func New(numPlayers int, seed uint64) (*State, error) {
-	if numPlayers < 2 || numPlayers > 4 {
-		return nil, fmt.Errorf("보난자: 인원은 2~4명이어야 한다 (%d명 요청)", numPlayers)
+	if numPlayers < 2 || numPlayers > MaxPlayers {
+		return nil, fmt.Errorf("보난자: 인원은 2~%d명이어야 한다 (%d명 요청)",
+			MaxPlayers, numPlayers)
 	}
 	s := &State{rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
 		Rules: variantFor(numPlayers)}
@@ -1884,9 +1916,12 @@ func TestHarvestRestriction(t *testing.T) {
 @<변형 차림 시험@>=
 func TestVariantSetup(t *testing.T) {
 	cases := []struct{ players, deck, removed, fields int }{
-		{2, 144 - 10, 10, 3}, // 정원콩 6 + 카카오콩 4를 뺀다
-		{3, 150 - 15, 4, 3},  // 카카오콩 4를 뺀다
-		{4, 154 - 20, 0, 2},  // 기본 규칙: 아무것도 안 뺀다
+		{2, 144 - 10, 10, 3}, // 정원콩 6 + 카카오콩 4
+		{3, 150 - 15, 4, 3},  // 카카오콩 4
+		{4, 130 - 20, 24, 2}, // 커피콩 24
+		{5, 130 - 25, 24, 2}, // 커피콩 24
+		{6, 144 - 30, 10, 2}, // 카카오콩 4 + 정원콩 6
+		{7, 144 - 35, 10, 2}, // 카카오콩 4 + 정원콩 6
 	}
 	for _, c := range cases {
 		s, err := New(c.players, 7)
@@ -1927,7 +1962,7 @@ func TestFieldBuyingByVariant(t *testing.T) {
 	for _, c := range []struct {
 		players int
 		want    bool
-	}{{2, false}, {3, false}, {4, true}} {
+	}{{2, false}, {3, false}, {4, true}, {5, true}, {6, true}, {7, true}} {
 		s, _ := New(c.players, 5)
 		s.Players[0].Treasury = []Card{Red, Red, Red}
 		got := false
@@ -1942,33 +1977,35 @@ func TestFieldBuyingByVariant(t *testing.T) {
 	}
 }
 
-@ 보충은 인원마다 모양이 다르다. 3인은 전원이 한 장씩 돌고, 4인은 활성
-플레이어 혼자 세 장을 뽑는다.
+@ 보충은 두 모양이다. $3\sim7$인은 전원이 한 장씩 돌고, 2인 결투만 활성
+플레이어 혼자 두 장을 뽑는다.
 @<보충 시험@>=
 func TestRefillByVariant(t *testing.T) {
-	s3, _ := New(3, 5)
-	before := handSizes(s3)
-	s3.endTurn()
-	for i, p := range s3.Players {
-		if len(p.Hand) != before[i]+1 {
-			t.Errorf("3인 %d번: %d→%d장, 한 장씩 기대",
-				i, before[i], len(p.Hand))
+	for _, n := range []int{3, 4, 5, 6, 7} {
+		s, _ := New(n, 5)
+		before := handSizes(s)
+		s.endTurn()
+		for i, p := range s.Players {
+			if len(p.Hand) != before[i]+1 {
+				t.Errorf("%d인 %d번: %d→%d장, 전원 한 장씩 기대",
+					n, i, before[i], len(p.Hand))
+			}
 		}
 	}
-	@<4인은 활성 플레이어만 세 장인지 본다@>
+	@<결투는 활성 플레이어만 두 장인지 본다@>
 }
 
-@ @<4인은 활성 플레이어만 세 장인지 본다@>=
-s4, _ := New(4, 5)
-was := handSizes(s4)
-s4.endTurn()
-for i, p := range s4.Players {
+@ @<결투는 활성 플레이어만 두 장인지 본다@>=
+s2, _ := New(2, 5)
+was := handSizes(s2)
+s2.endTurn()
+for i, p := range s2.Players {
 	want := was[i]
 	if i == 0 {
-		want += 3
+		want += 2
 	}
 	if len(p.Hand) != want {
-		t.Errorf("4인 %d번: %d장, %d장 기대", i, len(p.Hand), want)
+		t.Errorf("2인 %d번: %d장, %d장 기대", i, len(p.Hand), want)
 	}
 }
 
@@ -2081,7 +2118,7 @@ func mustApply(t *testing.T, s *State, a Action) {
 @<무작위 완주 시험@>=
 func TestRandomPlaythrough(t *testing.T) {
 	for seed := uint64(0); seed < 200; seed++ {
-		players := 2 + int(seed%3)
+		players := 2 + int(seed%6) // 2~7인을 고루 훑는다
 		s, err := New(players, seed)
 		if err != nil {
 			t.Fatal(err)

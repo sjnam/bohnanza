@@ -1,4 +1,4 @@
-//line engine/engine.w:1581
+//line engine/engine.w:1613
 package engine
 
 import (
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-//line engine/engine.w:1603
+//line engine/engine.w:1635
 func TestDeckSize(t *testing.T) {
 	total := 0
 	for b := Bean(0); b < NumBeans; b++ {
@@ -26,7 +26,7 @@ func TestDeckSize(t *testing.T) {
 	}
 }
 
-//line engine/engine.w:1623
+//line engine/engine.w:1655
 func TestCoins(t *testing.T) {
 	cases := []struct {
 		b    Bean
@@ -44,7 +44,7 @@ func TestCoins(t *testing.T) {
 	}
 }
 
-//line engine/engine.w:1645
+//line engine/engine.w:1677
 func TestBilateralTrade(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -65,7 +65,7 @@ func TestBilateralTrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-//line engine/engine.w:1670
+//line engine/engine.w:1702
 	p0, p1 := s.Players[0], s.Players[1]
 	if len(p0.Acquired) != 1 || p0.Acquired[0] != Red {
 		t.Errorf("0번 받은 콩이 강낭콩이 아님: %v", p0.Acquired)
@@ -83,10 +83,10 @@ func TestBilateralTrade(t *testing.T) {
 		t.Error("교환 뒤에도 대기 제안이 남음")
 	}
 
-//line engine/engine.w:1665
+//line engine/engine.w:1697
 }
 
-//line engine/engine.w:1690
+//line engine/engine.w:1722
 func TestMultiCardTrade(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -115,7 +115,7 @@ func TestMultiCardTrade(t *testing.T) {
 	}
 }
 
-//line engine/engine.w:1722
+//line engine/engine.w:1754
 func TestProposeNeedsFulfillment(t *testing.T) {
 	s := &State{
 		Players: []*Player{
@@ -143,7 +143,7 @@ func TestProposeNeedsFulfillment(t *testing.T) {
 	}
 }
 
-//line engine/engine.w:1754
+//line engine/engine.w:1786
 func TestViewRedaction(t *testing.T) {
 	s, err := New(3, 7)
 	if err != nil {
@@ -163,7 +163,7 @@ func TestViewRedaction(t *testing.T) {
 		t.Errorf("덱 장수가 틀림: %d", v.DeckCount)
 	}
 
-//line engine/engine.w:1778
+//line engine/engine.w:1810
 	b, err := s.ViewJSON(0)
 	if err != nil {
 		t.Fatal(err)
@@ -187,10 +187,10 @@ func TestViewRedaction(t *testing.T) {
 		t.Errorf("도감이 이상함: %d종 %d장", len(cat), total)
 	}
 
-//line engine/engine.w:1773
+//line engine/engine.w:1805
 }
 
-//line engine/engine.w:1807
+//line engine/engine.w:1839
 func TestSpectatorSeesNoHands(t *testing.T) {
 	s, err := New(3, 7)
 	if err != nil {
@@ -198,7 +198,7 @@ func TestSpectatorSeesNoHands(t *testing.T) {
 	}
 	v := s.View(Spectator)
 
-//line engine/engine.w:1818
+//line engine/engine.w:1850
 	for i, p := range v.Players {
 		if p.Hand != nil {
 			t.Errorf("관전자에게 %d번 손패가 새어 나감: %v", i, p.Hand)
@@ -214,9 +214,9 @@ func TestSpectatorSeesNoHands(t *testing.T) {
 		t.Errorf("관전자의 You가 %d", v.You)
 	}
 
-//line engine/engine.w:1814
+//line engine/engine.w:1846
 
-//line engine/engine.w:1837
+//line engine/engine.w:1869
 	if len(v.Players) != 3 || v.DeckCount != len(s.Deck) {
 		t.Errorf("관전자가 공개 정보를 못 봄: %d명, 덱 %d", len(v.Players), v.DeckCount)
 	}
@@ -233,10 +233,10 @@ func TestSpectatorSeesNoHands(t *testing.T) {
 		t.Errorf("관전자 JSON에 hand 칸이 실림: %s", b)
 	}
 
-//line engine/engine.w:1815
+//line engine/engine.w:1847
 }
 
-//line engine/engine.w:1857
+//line engine/engine.w:1889
 func TestHarvestRestriction(t *testing.T) {
 	s := &State{
 		Players: []*Player{{Fields: []Field{{Coffee, 1}, {Blue, 2}}}},
@@ -261,12 +261,15 @@ func TestHarvestRestriction(t *testing.T) {
 	}
 }
 
-//line engine/engine.w:1885
+//line engine/engine.w:1917
 func TestVariantSetup(t *testing.T) {
 	cases := []struct{ players, deck, removed, fields int }{
-		{2, 144 - 10, 10, 3}, // 정원콩 6 + 카카오콩 4를 뺀다
-		{3, 150 - 15, 4, 3},  // 카카오콩 4를 뺀다
-		{4, 154 - 20, 0, 2},  // 기본 규칙: 아무것도 안 뺀다
+		{2, 144 - 10, 10, 3}, // 정원콩 6 + 카카오콩 4
+		{3, 150 - 15, 4, 3},  // 카카오콩 4
+		{4, 130 - 20, 24, 2}, // 커피콩 24
+		{5, 130 - 25, 24, 2}, // 커피콩 24
+		{6, 144 - 30, 10, 2}, // 카카오콩 4 + 정원콩 6
+		{7, 144 - 35, 10, 2}, // 카카오콩 4 + 정원콩 6
 	}
 	for _, c := range cases {
 		s, err := New(c.players, 7)
@@ -274,7 +277,7 @@ func TestVariantSetup(t *testing.T) {
 			t.Fatal(err)
 		}
 
-//line engine/engine.w:1903
+//line engine/engine.w:1938
 		if len(s.Deck) != c.deck {
 			t.Errorf("%d인: 덱 %d장, %d장 기대", c.players, len(s.Deck), c.deck)
 		}
@@ -295,16 +298,16 @@ func TestVariantSetup(t *testing.T) {
 			}
 		}
 
-//line engine/engine.w:1897
+//line engine/engine.w:1932
 	}
 }
 
-//line engine/engine.w:1926
+//line engine/engine.w:1961
 func TestFieldBuyingByVariant(t *testing.T) {
 	for _, c := range []struct {
 		players int
 		want    bool
-	}{{2, false}, {3, false}, {4, true}} {
+	}{{2, false}, {3, false}, {4, true}, {5, true}, {6, true}, {7, true}} {
 		s, _ := New(c.players, 5)
 		s.Players[0].Treasury = []Card{Red, Red, Red}
 		got := false
@@ -319,36 +322,38 @@ func TestFieldBuyingByVariant(t *testing.T) {
 	}
 }
 
-//line engine/engine.w:1948
+//line engine/engine.w:1983
 func TestRefillByVariant(t *testing.T) {
-	s3, _ := New(3, 5)
-	before := handSizes(s3)
-	s3.endTurn()
-	for i, p := range s3.Players {
-		if len(p.Hand) != before[i]+1 {
-			t.Errorf("3인 %d번: %d→%d장, 한 장씩 기대",
-				i, before[i], len(p.Hand))
+	for _, n := range []int{3, 4, 5, 6, 7} {
+		s, _ := New(n, 5)
+		before := handSizes(s)
+		s.endTurn()
+		for i, p := range s.Players {
+			if len(p.Hand) != before[i]+1 {
+				t.Errorf("%d인 %d번: %d→%d장, 전원 한 장씩 기대",
+					n, i, before[i], len(p.Hand))
+			}
 		}
 	}
 
-//line engine/engine.w:1962
-	s4, _ := New(4, 5)
-	was := handSizes(s4)
-	s4.endTurn()
-	for i, p := range s4.Players {
+//line engine/engine.w:1999
+	s2, _ := New(2, 5)
+	was := handSizes(s2)
+	s2.endTurn()
+	for i, p := range s2.Players {
 		want := was[i]
 		if i == 0 {
-			want += 3
+			want += 2
 		}
 		if len(p.Hand) != want {
-			t.Errorf("4인 %d번: %d장, %d장 기대", i, len(p.Hand), want)
+			t.Errorf("2인 %d번: %d장, %d장 기대", i, len(p.Hand), want)
 		}
 	}
 
-//line engine/engine.w:1959
+//line engine/engine.w:1996
 }
 
-//line engine/engine.w:1976
+//line engine/engine.w:2013
 func handSizes(s *State) []int {
 	n := make([]int, len(s.Players))
 	for i, p := range s.Players {
@@ -357,7 +362,7 @@ func handSizes(s *State) []int {
 	return n
 }
 
-//line engine/engine.w:1987
+//line engine/engine.w:2024
 func TestDuelTossHand(t *testing.T) {
 	s, _ := New(2, 11)
 	p := s.Players[0]
@@ -365,7 +370,7 @@ func TestDuelTossHand(t *testing.T) {
 		t.Fatal(err) // 한 장 심어야 버릴 수 있다
 	}
 
-//line engine/engine.w:1998
+//line engine/engine.w:2035
 	tosses := 0
 	for _, a := range s.Legal(0) {
 		if a.Kind == TossHand {
@@ -376,9 +381,9 @@ func TestDuelTossHand(t *testing.T) {
 		t.Errorf("버리기 수 %d개, 손패 %d장", tosses, len(p.Hand))
 	}
 
-//line engine/engine.w:1994
+//line engine/engine.w:2031
 
-//line engine/engine.w:2009
+//line engine/engine.w:2046
 	want, size := p.Hand[2], len(p.Hand)
 	ev, err := s.Apply(Action{Kind: TossHand, Actor: 0, HandNo: 2})
 	if err != nil {
@@ -400,10 +405,10 @@ func TestDuelTossHand(t *testing.T) {
 		t.Error(err)
 	}
 
-//line engine/engine.w:1995
+//line engine/engine.w:2032
 }
 
-//line engine/engine.w:2035
+//line engine/engine.w:2072
 func TestDuelTurnFlow(t *testing.T) {
 	s, _ := New(2, 3)
 	if s.Stage != PhasePlant {
@@ -412,7 +417,7 @@ func TestDuelTurnFlow(t *testing.T) {
 	mustApply(t, s, Action{Kind: PlantFront, Actor: 0, FieldNo: 0})
 	mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
 
-//line engine/engine.w:2047
+//line engine/engine.w:2084
 	if s.Stage != PhaseDuelDraw {
 		t.Fatalf("단계가 %v, 뽑아 나누기 기대", s.Stage)
 	}
@@ -420,9 +425,9 @@ func TestDuelTurnFlow(t *testing.T) {
 		t.Fatalf("상 위에 %d장, 적어도 3장 기대", len(s.FaceUp))
 	}
 
-//line engine/engine.w:2043
+//line engine/engine.w:2080
 
-//line engine/engine.w:2055
+//line engine/engine.w:2092
 	left := append([]Card{}, s.FaceUp...)
 	mustApply(t, s, Action{Kind: EndPhase, Actor: 0})
 	if s.Active != 1 {
@@ -438,10 +443,10 @@ func TestDuelTurnFlow(t *testing.T) {
 		t.Error(err)
 	}
 
-//line engine/engine.w:2044
+//line engine/engine.w:2081
 }
 
-//line engine/engine.w:2071
+//line engine/engine.w:2108
 func mustApply(t *testing.T, s *State, a Action) {
 	t.Helper()
 	if _, err := s.Apply(a); err != nil {
@@ -449,17 +454,17 @@ func mustApply(t *testing.T, s *State, a Action) {
 	}
 }
 
-//line engine/engine.w:2082
+//line engine/engine.w:2119
 func TestRandomPlaythrough(t *testing.T) {
 	for seed := uint64(0); seed < 200; seed++ {
-		players := 2 + int(seed%3)
+		players := 2 + int(seed%6) // 2~7인을 고루 훑는다
 		s, err := New(players, seed)
 		if err != nil {
 			t.Fatal(err)
 		}
 		rng := rand.New(rand.NewPCG(seed, 12345))
 
-//line engine/engine.w:2097
+//line engine/engine.w:2134
 		for step := 0; step < 100000 && !s.Over(); step++ {
 			actor := s.ToAct()
 			if actor < 0 {
@@ -480,6 +485,6 @@ func TestRandomPlaythrough(t *testing.T) {
 			t.Fatalf("씨앗 %d: 10만 수 안에 게임이 안 끝남", seed)
 		}
 
-//line engine/engine.w:2091
+//line engine/engine.w:2128
 	}
 }
