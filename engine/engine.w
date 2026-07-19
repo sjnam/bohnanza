@@ -39,7 +39,7 @@ $$\vbox{\halign{\indent\bf#\hfil&\quad#\hfil\cr
 다른가''는 한 곳에서만 읽으면 된다.
 
 @ 프로그램은 \GO/ 패키지 |engine|으로 나온다. \.{gtangle}을 실행하면 주 출력
-\.{bohnanza.go}와 시험 파일 \.{bohnanza\_test.go}가 함께 떨어진다. 아래
+\.{engine.go}와 시험 파일 \.{engine\_test.go}가 함께 떨어진다. 아래
 조각들이 위에서 아래로 쌓여 엔진을 이룬다.
 @c
 package engine
