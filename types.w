@@ -24,3 +24,4 @@
 @s FieldView int
 @s ProposalView int
 @s Phase int
+@s Event int

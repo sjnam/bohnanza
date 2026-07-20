@@ -38,9 +38,7 @@ $$\vbox{\halign{\indent\bf#\hfil&\quad#\hfil\cr
 이 갈래를 |Variant| 하나에 값으로 모아 두었으므로, 규칙의 ``인원에 따라 무엇이
 다른가''는 한 곳에서만 읽으면 된다.
 
-@ 프로그램은 \GO/ 패키지 |engine|으로 나온다. \.{gtangle}을 실행하면 주 출력
-\.{engine.go}와 시험 파일 \.{engine\_test.go}가 함께 떨어진다. 아래
-조각들이 위에서 아래로 쌓여 엔진을 이룬다.
+프로그램은 \GO/ 패키지 |engine|으로 나온다.
 @c
 package engine
 
@@ -81,7 +79,6 @@ import (
 개정판이 $4,8,11,13$인데, 여기서는 개정판을 따랐다. 인원별 변형 규칙을 개정판
 규칙서에서 가져왔으니 콩미터도 같은 판본으로 맞추는 편이 앞뒤가 맞기 때문이다.
 나머지 열 종류는 두 판본이 같다.
-@s Bean int
 @<콩과 콩미터@>=
 type Bean int
 
@@ -172,17 +169,29 @@ type Variant struct {
 func variantFor(n int) Variant {
 	switch n {
 	case 2: // 콩 결투
-		return Variant{Drop: []Bean{Garden, Cocoa}, StartField: 3,
-			LastPass: 1, Refill: 2, Duel: true}
+		return Variant{
+			Drop: []Bean{Garden, Cocoa},
+			StartField: 3, LastPass: 1, Refill: 2,
+			Duel: true,
+		}
 	case 3:
-		return Variant{Drop: []Bean{Cocoa}, StartField: 3,
-			LastPass: 2, Refill: 1, RoundRobin: true}
+		return Variant{
+			Drop: []Bean{Cocoa},
+			StartField: 3, LastPass: 2, Refill: 1,
+			RoundRobin: true,
+		}
 	case 4, 5:
-		return Variant{Drop: []Bean{Coffee}, StartField: 2, ExtraField: true,
-			LastPass: 3, Refill: 1, RoundRobin: true}
+		return Variant{
+			Drop: []Bean{Coffee},
+			StartField: 2, ExtraField: true, LastPass: 3, Refill: 1,
+			RoundRobin: true,
+		}
 	}
-	return Variant{Drop: []Bean{Cocoa, Garden}, StartField: 2, ExtraField: true,
-		LastPass: 3, Refill: 1, RoundRobin: true} // 6~7인
+	return Variant{
+		Drop: []Bean{Cocoa, Garden},
+		StartField: 2, ExtraField: true, LastPass: 3, Refill: 1,
+		RoundRobin: true,
+	} // $6\sim7$인
 }
 
 func (v Variant) drops(b Bean) bool {
