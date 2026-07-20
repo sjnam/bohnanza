@@ -528,21 +528,54 @@ func randToken() string {
 @* \.{HTTP} 손잡이.
 손잡이들은 얇다. 방을 만들거나 참가시키고, 토큰으로 신원을 확인한 뒤 엔진
 계층(|apply|\slash |view|)을 불러 결과를 \.{JSON}으로 돌려줄 뿐이다. 먼저 \.{JSON}
-응답 잔손질과, 토큰으로 세션을 찾는 |auth|를 묶어 둔다---신원이 확인되지 않으면
-401을 돌려주고 거짓을 낸다.
-@d http.StatusUnauthorized
+응답 잔손질을 해 둔다.
 @<\.{HTTP} 손잡이@>=
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
 }
 
-func (h *Hub) auth(w http.ResponseWriter, r *http.Request) (*Game, int, bool) {
-	g, player, ok := h.session(requestToken(r))
-	if !ok {
-		http.Error(w, "토큰이 없거나 잘못됨", http.StatusUnauthorized)
+@ 신원 확인은 손잡이마다 되풀이하지 않고 {\it 감싸개\/}가 도맡는다. 인증이
+필요한 손잡이는 표준 |http.HandlerFunc|가 아니라 |authFunc|---즉 확인이 끝난
+|*Game|과 자리 번호를 {\bf 인수로 받는} 꼴---로 짓고, 길을 이을 때 |authed|로
+감싼다.
+
+이 꼴을 고른 까닭이 있다. 흔한 |func(http.Handler) http.Handler| 미들웨어는
+통과냐 거절이냐만 정할 뿐 값을 내려보내지 못하므로, 방과 자리를 |r.Context()|에
+실었다가 손잡이마다 타입 단언으로 도로 꺼내야 한다---지우려던 네 줄보다 잔손질이
+되레 는다. 어댑터 꼴에서는 그 두 값이 서명에 그냥 놓여 있다.
+
+값어치는 줄 수가 아니라 {\bf 인증을 빠뜨릴 수 없게 된다는} 데 있다. 손잡이가
+일하려면 방과 자리가 있어야 하는데, 그것을 얻을 길이 |authed|뿐이니 규율이
+타입으로 굳는다.
+@d http.StatusUnauthorized
+@<\.{HTTP} 손잡이@>=
+type authFunc func(http.ResponseWriter, *http.Request, *Game, int)
+
+func (h *Hub) authed(fn authFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		g, player, ok := h.session(requestToken(r))
+		if !ok {
+			http.Error(w, "토큰이 없거나 잘못됨", http.StatusUnauthorized)
+			return
+		}
+		fn(w, r, g, player)
 	}
-	return g, player, ok
+}
+
+@ 관전자 막기도 같은 꼴의 감싸개다. |authFunc|를 받아 |authFunc|를 내므로
+|authed|와 겹쳐 쓸 수 있다---자리를 잡은 사람만 들이고 싶은 손잡이는
+|h.authed(h.seated(...))|로 두 겹을 두르면 된다.
+@d http.StatusForbidden
+@<\.{HTTP} 손잡이@>=
+func (h *Hub) seated(fn authFunc) authFunc {
+	return func(w http.ResponseWriter, r *http.Request, g *Game, player int) {
+		if player == bz.Spectator {
+			http.Error(w, "관전자는 수를 둘 수 없음", http.StatusForbidden)
+			return
+		}
+		fn(w, r, g, player)
+	}
 }
 
 @ 토큰은 URL이 아니라 \.{Authorization: Bearer} 헤더에서 읽는다. SSE의
@@ -614,30 +647,20 @@ func (h *Hub) handleWatch(w http.ResponseWriter, r *http.Request) {
 		"name": h.sessionName(tok)})
 }
 
-@ 뷰 한 장을 찍어 준다. 토큰으로 신원을 확인하고 그 플레이어의 뷰를 준다.
+@ 뷰 한 장을 찍어 준다. 신원은 감싸개가 이미 확인했으므로, 받은 자리의 뷰를
+그대로 내주면 그만이다---손잡이 하나가 한 줄로 줄었다.
 @<\.{HTTP} 손잡이@>=
-func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
+func (h *Hub) handleView(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	writeJSON(w, g.view(player))
 }
 
 @ 액션을 받는다. 토큰이 임자를 정하므로, 본문에 어떤 |player|가 적혀 있든 서버가
-토큰의 자리로 {\it 덮어쓴다\/}---남의 자리로 두는 것을 원천 봉쇄한다. 불법이면
-409로 되돌린다. 성공하면 그 플레이어의 새 뷰와 이벤트를 즉답으로 주고, 나머지
+토큰의 자리로 {\it 덮어쓴다\/}---남의 자리로 두는 것을 원천 봉쇄한다. 관전자
+막기는 |seated| 감싸개가 맡으므로 여기에는 나오지 않는다. 불법이면 409로
+되돌린다. 성공하면 그 플레이어의 새 뷰와 이벤트를 즉답으로 주고, 나머지
 구독자들은 스트림으로 갱신을 받는다.
 @<\.{HTTP} 손잡이@>=
-func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
-	if player == bz.Spectator {
-		http.Error(w, "관전자는 수를 둘 수 없음", http.StatusForbidden)
-		return
-	}
+func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	var a bz.Action
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		http.Error(w, "액션 JSON을 읽을 수 없음", http.StatusBadRequest)
@@ -653,16 +676,14 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 		Bots: g.botFlags(), Names: g.names})
 }
 
-@ 뷰 스트림. 토큰으로 신원을 확인한 뒤 SSE 헤더를 세우고 구독자로 등록한다.
-채널로 오는 갱신을 그대로 \.{data:} 줄에 실어 흘려보내고, 접속이 끊기면(요청
-맥락이 닫히면) 구독을 푼다.
+@ 뷰 스트림. SSE 헤더를 세우고 구독자로 등록한 뒤, 채널로 오는 갱신을 그대로
+\.{data:} 줄에 실어 흘려보내고, 접속이 끊기면(요청 맥락이 닫히면) 구독을 푼다.
+감싸개로 옮긴 덕에 |ok| 가림도 없어졌다---전에는 인증의 |ok|를 |http.Flusher|
+단언의 |ok|가 덮어썼다. 맞게 돌긴 했지만 사이에 코드가 끼어들면 조용히 어긋날
+자리였다.
 @d http.StatusInternalServerError
 @<\.{HTTP} 손잡이@>=
-func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
+func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "스트리밍을 지원하지 않음", http.StatusInternalServerError)
@@ -749,15 +770,11 @@ func (g *Game) rolloverChat() {
 	}
 }
 
-@ 채팅 손잡이. 토큰으로 신원을 확인하고, 본문에서 글을 읽어 다듬은 뒤 방에
-알린다. 빈 글은 무시하고, 너무 길면 잘라 악용을 막는다---글자(룬) 단위로 잘라
-한글도 깨지지 않는다.
+@ 채팅 손잡이. 본문에서 글을 읽어 다듬은 뒤 방에 알린다. 빈 글은 무시하고, 너무
+길면 잘라 악용을 막는다---글자(룬) 단위로 잘라 한글도 깨지지 않는다. 관전자도
+말은 할 수 있으므로 |seated|는 두르지 않는다.
 @<채팅@>=
-func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
+func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	var body struct {
 		Text string `json:"text"`
 	}
@@ -787,6 +804,10 @@ w.WriteHeader(http.StatusNoContent)
 1.22부터 |ServeMux|가 메서드와 경로 변수를 함께 받으므로, 라우팅도 표준
 라이브러리만으로 깔끔하다. 정적 파일은 앞단 \.{nginx}가 맡으므로, 여기에는 게임
 API 길만 잇는다.
+
+길은 두 무리로 갈린다. 위쪽 넷은 아직 토큰이 없는 이가 두드리는 문이라 그대로
+잇고, 아래쪽 넷은 |authed|로 감싼다---누가 인증을 받고 누가 안 받는지가 이 목록
+한 곳에 다 드러난다.
 @<문 열기@>=
 func main() {
 	addr := ":8080"
@@ -799,11 +820,12 @@ func main() {
 	mux.HandleFunc("POST /games", h.handleNew)
 	mux.HandleFunc("POST /games/{code}/join", h.handleJoin)
 	mux.HandleFunc("POST /games/{code}/watch", h.handleWatch)
-	mux.HandleFunc("GET /stream", h.handleStream)
-	mux.HandleFunc("POST /action", h.handleAction)
-	mux.HandleFunc("POST /chat", h.handleChat)
-	mux.HandleFunc("GET /view", h.handleView)
 	mux.HandleFunc("GET /catalog", handleCatalog)
+	mux.HandleFunc("GET /stream", h.authed(h.handleStream))
+	mux.HandleFunc("POST /action", h.authed(h.seated(h.handleAction)))
+	mux.HandleFunc("POST /chat", h.authed(h.handleChat))
+	mux.HandleFunc("GET /view", h.authed(h.handleView))
+
 	log.Printf("보난자 서버 열림: %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }

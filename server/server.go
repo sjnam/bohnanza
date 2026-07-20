@@ -376,21 +376,38 @@ func randToken() string {
 	return hex.EncodeToString(b[:])
 }
 
-//line server/server.w:535
+//line server/server.w:533
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
 }
 
-func (h *Hub) auth(w http.ResponseWriter, r *http.Request) (*Game, int, bool) {
-	g, player, ok := h.session(requestToken(r))
-	if !ok {
-		http.Error(w, "토큰이 없거나 잘못됨", http.StatusUnauthorized)
+//line server/server.w:553
+type authFunc func(http.ResponseWriter, *http.Request, *Game, int)
+
+func (h *Hub) authed(fn authFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		g, player, ok := h.session(requestToken(r))
+		if !ok {
+			http.Error(w, "토큰이 없거나 잘못됨", http.StatusUnauthorized)
+			return
+		}
+		fn(w, r, g, player)
 	}
-	return g, player, ok
 }
 
-//line server/server.w:552
+//line server/server.w:571
+func (h *Hub) seated(fn authFunc) authFunc {
+	return func(w http.ResponseWriter, r *http.Request, g *Game, player int) {
+		if player == bz.Spectator {
+			http.Error(w, "관전자는 수를 둘 수 없음", http.StatusForbidden)
+			return
+		}
+		fn(w, r, g, player)
+	}
+}
+
+//line server/server.w:585
 func requestToken(r *http.Request) string {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimPrefix(h, "Bearer ")
@@ -401,7 +418,7 @@ func requestToken(r *http.Request) string {
 	return ""
 }
 
-//line server/server.w:567
+//line server/server.w:600
 func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	players, bots := 3, 0
 	if v := r.URL.Query().Get("players"); v != "" {
@@ -424,7 +441,7 @@ func (h *Hub) handleNew(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"code": code, "players": players, "bots": bots})
 }
 
-//line server/server.w:594
+//line server/server.w:627
 func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	player, tok, err := h.join(r.PathValue("code"), r.URL.Query().Get("name"))
 	if err != nil {
@@ -434,7 +451,7 @@ func (h *Hub) handleJoin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"player": player, "token": tok})
 }
 
-//line server/server.w:607
+//line server/server.w:640
 func (h *Hub) handleWatch(w http.ResponseWriter, r *http.Request) {
 	tok, err := h.watch(r.PathValue("code"), r.URL.Query().Get("name"))
 	if err != nil {
@@ -445,25 +462,13 @@ func (h *Hub) handleWatch(w http.ResponseWriter, r *http.Request) {
 		"name": h.sessionName(tok)})
 }
 
-//line server/server.w:619
-func (h *Hub) handleView(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
+//line server/server.w:653
+func (h *Hub) handleView(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	writeJSON(w, g.view(player))
 }
 
-//line server/server.w:632
-func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
-	if player == bz.Spectator {
-		http.Error(w, "관전자는 수를 둘 수 없음", http.StatusForbidden)
-		return
-	}
+//line server/server.w:663
+func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	var a bz.Action
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		http.Error(w, "액션 JSON을 읽을 수 없음", http.StatusBadRequest)
@@ -479,19 +484,15 @@ func (h *Hub) handleAction(w http.ResponseWriter, r *http.Request) {
 		Bots: g.botFlags(), Names: g.names})
 }
 
-//line server/server.w:661
-func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
+//line server/server.w:686
+func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "스트리밍을 지원하지 않음", http.StatusInternalServerError)
 		return
 	}
 
-//line server/server.w:678
+//line server/server.w:699
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -511,15 +512,15 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-//line server/server.w:672
+//line server/server.w:693
 }
 
-//line server/server.w:700
+//line server/server.w:721
 func handleCatalog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, bz.Catalog())
 }
 
-//line server/server.w:709
+//line server/server.w:730
 type ChatMsg struct {
 	Seq  int    `json:"seq"` // 방 안에서 늘 커지는 순번
 	From int    `json:"from"`
@@ -527,7 +528,7 @@ type ChatMsg struct {
 	Text string `json:"text"`
 }
 
-//line server/server.w:721
+//line server/server.w:742
 func (g *Game) chat(from int, name, text string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -547,7 +548,7 @@ func (g *Game) chat(from int, name, text string) {
 	}
 }
 
-//line server/server.w:745
+//line server/server.w:766
 func (g *Game) rolloverChat() {
 	if g.state.Active != g.turnActive {
 		g.turnActive = g.state.Active
@@ -555,12 +556,8 @@ func (g *Game) rolloverChat() {
 	}
 }
 
-//line server/server.w:756
-func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
-	g, player, ok := h.auth(w, r)
-	if !ok {
-		return
-	}
+//line server/server.w:777
+func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	var body struct {
 		Text string `json:"text"`
 	}
@@ -569,7 +566,7 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-//line server/server.w:774
+//line server/server.w:791
 	text := strings.TrimSpace(body.Text)
 	if text == "" {
 		w.WriteHeader(http.StatusNoContent)
@@ -581,10 +578,10 @@ func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request) {
 	g.chat(player, h.sessionName(requestToken(r)), text)
 	w.WriteHeader(http.StatusNoContent)
 
-//line server/server.w:769
+//line server/server.w:786
 }
 
-//line server/server.w:791
+//line server/server.w:812
 func main() {
 	addr := ":8080"
 	if len(os.Args) > 1 {
@@ -596,11 +593,12 @@ func main() {
 	mux.HandleFunc("POST /games", h.handleNew)
 	mux.HandleFunc("POST /games/{code}/join", h.handleJoin)
 	mux.HandleFunc("POST /games/{code}/watch", h.handleWatch)
-	mux.HandleFunc("GET /stream", h.handleStream)
-	mux.HandleFunc("POST /action", h.handleAction)
-	mux.HandleFunc("POST /chat", h.handleChat)
-	mux.HandleFunc("GET /view", h.handleView)
 	mux.HandleFunc("GET /catalog", handleCatalog)
+	mux.HandleFunc("GET /stream", h.authed(h.handleStream))
+	mux.HandleFunc("POST /action", h.authed(h.seated(h.handleAction)))
+	mux.HandleFunc("POST /chat", h.authed(h.handleChat))
+	mux.HandleFunc("GET /view", h.authed(h.handleView))
+
 	log.Printf("보난자 서버 열림: %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
