@@ -7,6 +7,7 @@
 @s time.Time int
 @s http.Request int
 @s http.ResponseWriter int
+@s testing.T int
 
 @s Flusher int
 @s State int
