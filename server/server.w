@@ -103,10 +103,10 @@ type Game struct {
 데 쓴다. 봇 여부는 엔진의 |View|가 모르는 서버만의 사정이라 여기에 따로 싣는다.
 @<게임 방과 구독자@>=
 type Message struct {
-	Board  bz.View    `json:"view"`
-	Events []bz.Event `json:"events"`
-	Bots   []bool     `json:"bots"`  // |bots[p]|가 참이면 |p|번은 봇
-	Names  []string   `json:"names"` // 자리마다의 표시 이름
+	Board  bz.View @t\quad@> `json:"view"`
+	Events []bz.Event @t\quad@> `json:"events"`
+	Bots   []bool @t\quad@> `json:"bots"`  // |bots[p]|가 참이면 |p|번은 봇
+	Names  []string @t\quad@> `json:"names"` // 자리마다의 표시 이름
 }
 
 @ 구독자가 붙고 떨어지는 일을 다룬다. |register|는 새 구독자를 목록에 넣고,
@@ -728,10 +728,10 @@ func handleCatalog(w http.ResponseWriter, r *http.Request) {
 위해 최근 몇 줄을 방에 간직해 접속할 때 되보낸다. 봇은 말하지 않는다.
 @<채팅@>=
 type ChatMsg struct {
-	Seq  int    `json:"seq"` // 방 안에서 늘 커지는 순번
-	From int    `json:"from"`
-	Name string `json:"name,omitempty"` // 관전자만 채운다(자리 있는 이는 자리로 안다)
-	Text string `json:"text"`
+	Seq  int @t\quad@> `json:"seq"` // 방 안에서 늘 커지는 순번
+	From int @t\quad@> `json:"from"`
+	Name string @t\quad@> `json:"name,omitempty"` // 관전자만 채운다(자리 있는 이는 자리로 안다)
+	Text string @t\quad@> `json:"text"`
 }
 
 @ 채팅 한 줄을 방에 적고 모두에게 민다. 순번을 하나 올려 붙이므로, 재접속으로
@@ -776,7 +776,7 @@ func (g *Game) rolloverChat() {
 @<채팅@>=
 func (h *Hub) handleChat(w http.ResponseWriter, r *http.Request, g *Game, player int) {
 	var body struct {
-		Text string `json:"text"`
+		Text string @t\quad@> `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "채팅 JSON을 읽을 수 없음", http.StatusBadRequest)
