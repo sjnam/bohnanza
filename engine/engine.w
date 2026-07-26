@@ -2,6 +2,7 @@
 
 \input kotexgweb
 
+\let\tagkern\quad
 \datethis
 \def\title{보난자 게임 엔진}
 
@@ -606,19 +607,19 @@ JSON 숫자로 받아 갈래를 가르므로, 중간에 끼워 넣으면 이미 
 |TossHand|가 손패 몇 번째를 버리는지 가리키는 자리다.
 @<액션@>=
 type Action struct {
-	Kind     ActionKind @t\quad@> `json:"kind"`
-	Actor    int @t\quad@> `json:"player"` // 이 수를 두는 사람
-	FieldNo  int @t\quad@> `json:"field"`  // 심거나 거둘 밭 번호
-	FaceUpNo int @t\quad@> `json:"card"`   // |TakeRevealed|에서 공개 카드 번호
-	HandNo   int @t\quad@> `json:"hand"`   // |TossHand|에서 버릴 손패 번호
-	To       int @t\quad@> `json:"to"`     // 거래 상대
+	Kind     ActionKind  `json:"kind"`
+	Actor    int  `json:"player"` // 이 수를 두는 사람
+	FieldNo  int  `json:"field"`  // 심거나 거둘 밭 번호
+	FaceUpNo int  `json:"card"`   // |TakeRevealed|에서 공개 카드 번호
+	HandNo   int  `json:"hand"`   // |TossHand|에서 버릴 손패 번호
+	To       int  `json:"to"`     // 거래 상대
 
 	// |ProposeTrade|용: 주고받을 콩을 값으로 적는다.
-	GiveHand   []Card @t\quad@> `json:"giveHand,omitempty"`
-	GiveFaceUp []Card @t\quad@> `json:"giveFaceUp,omitempty"`
-	GetHand    []Card @t\quad@> `json:"getHand,omitempty"`
+	GiveHand   []Card  `json:"giveHand,omitempty"`
+	GiveFaceUp []Card  `json:"giveFaceUp,omitempty"`
+	GetHand    []Card  `json:"getHand,omitempty"`
 
-	Accept bool @t\quad@> `json:"accept,omitempty"` // |RespondTrade|용: 수락 여부
+	Accept bool  `json:"accept,omitempty"` // |RespondTrade|용: 수락 여부
 }
 
 @ 사람이 읽을 이름표를 붙여 두면 CLI가 메뉴를 그리기 좋다.
@@ -943,14 +944,14 @@ const (
 const NoActor = -1
 
 type Event struct {
-	Kind    EventKind @t\quad@> `json:"kind"`
-	Actor   int @t\quad@> `json:"actor"`          // 이 일을 한 사람
-	To      int @t\quad@> `json:"to"`             // 거래 상대
-	Crop    Bean @t\quad@> `json:"bean"`           // 이 일에 걸린 콩
-	FieldNo int @t\quad@> `json:"field"`          // 심거나 거둔 밭 번호
-	Coins   int @t\quad@> `json:"coins"`          // 거두어 얻은 코인
-	Give    []Card @t\quad@> `json:"give,omitempty"` // 제안자가 내주는 콩
-	Get     []Card @t\quad@> `json:"get,omitempty"`  // 제안자가 받는 콩
+	Kind    EventKind  `json:"kind"`
+	Actor   int  `json:"actor"`          // 이 일을 한 사람
+	To      int  `json:"to"`             // 거래 상대
+	Crop    Bean  `json:"bean"`           // 이 일에 걸린 콩
+	FieldNo int  `json:"field"`          // 심거나 거둔 밭 번호
+	Coins   int  `json:"coins"`          // 거두어 얻은 코인
+	Give    []Card  `json:"give,omitempty"` // 제안자가 내주는 콩
+	Get     []Card  `json:"get,omitempty"`  // 제안자가 받는 콩
 }
 
 @ 그래도 터미널처럼 단출한 곳을 위해 기본 문장 하나는 마련해 둔다. 이것은
@@ -1484,48 +1485,48 @@ func (s *State) Check() error {
 이름\slash 장수\slash 콩미터 같은 고정 정보는 |Catalog|로 따로 한 번만 받는다.
 @<플레이어 뷰@>=
 type FieldView struct {
-	Crop  Bean @t\quad@> `json:"bean"`  // Count가 0이면 빈 밭이라 의미 없음
-	Count int  @t\quad@> `json:"count"`
+	Crop  Bean  `json:"bean"`  // Count가 0이면 빈 밭이라 의미 없음
+	Count int   `json:"count"`
 }
 
 type PlayerView struct {
-	Index     int         @t\quad@> `json:"index"`
-	IsYou     bool        @t\quad@> `json:"isYou"`
-	Fields    []FieldView @t\quad@> `json:"fields"`
-	Coins     int         @t\quad@> `json:"coins"`
-	Acquired  []Bean      @t\quad@> `json:"acquired"`
-	HandCount int         @t\quad@> `json:"handCount"`
-	Hand      []Bean      @t\quad@> `json:"hand,omitempty"` // 본인만 채워진다
+	Index     int          `json:"index"`
+	IsYou     bool         `json:"isYou"`
+	Fields    []FieldView  `json:"fields"`
+	Coins     int          `json:"coins"`
+	Acquired  []Bean       `json:"acquired"`
+	HandCount int          `json:"handCount"`
+	Hand      []Bean       `json:"hand,omitempty"` // 본인만 채워진다
 }
 
 @ 진행 중인 거래 제안도 뷰에 담는다. 보난자의 거래는 공개 협상이므로 무엇을
 주고받는지는 모두가 안다.
 @<플레이어 뷰@>=
 type ProposalView struct {
-	From       int    @t\quad@> `json:"from"`
-	To         int    @t\quad@> `json:"to"`
-	GiveHand   []Bean @t\quad@> `json:"giveHand"`
-	GiveFaceUp []Bean @t\quad@> `json:"giveFaceUp"`
-	GetHand    []Bean @t\quad@> `json:"getHand"`
+	From       int     `json:"from"`
+	To         int     `json:"to"`
+	GiveHand   []Bean  `json:"giveHand"`
+	GiveFaceUp []Bean  `json:"giveFaceUp"`
+	GetHand    []Bean  `json:"getHand"`
 }
 
 @ 뷰 전체다. 공개 상태에 더해, 이 뷰 주인이 지금 둘 수 있는 합법수(|Legal|)까지
 실어 준다. 클라이언트는 이 하나로 화면을 그리고 버튼을 만든다.
 @<플레이어 뷰@>=
 type View struct {
-	You          int           @t\quad@> `json:"you"`
-	Active       int           @t\quad@> `json:"active"`
-	ToAct        int           @t\quad@> `json:"toAct"`
-	Stage        Phase         @t\quad@> `json:"phase"`
-	PhaseName    string        @t\quad@> `json:"phaseName"`
-	Players      []PlayerView  @t\quad@> `json:"players"`
-	FaceUp       []Bean        @t\quad@> `json:"faceUp"`
-	DeckCount    int           @t\quad@> `json:"deckCount"`
-	DiscardCount int           @t\quad@> `json:"discardCount"`
-	Pending      *ProposalView @t\quad@> `json:"pending,omitempty"`
-	Legal        []Action      @t\quad@> `json:"legal"`
-	Over         bool          @t\quad@> `json:"over"`
-	Scores       []int         @t\quad@> `json:"scores,omitempty"`
+	You          int            `json:"you"`
+	Active       int            `json:"active"`
+	ToAct        int            `json:"toAct"`
+	Stage        Phase          `json:"phase"`
+	PhaseName    string         `json:"phaseName"`
+	Players      []PlayerView   `json:"players"`
+	FaceUp       []Bean         `json:"faceUp"`
+	DeckCount    int            `json:"deckCount"`
+	DiscardCount int            `json:"discardCount"`
+	Pending      *ProposalView  `json:"pending,omitempty"`
+	Legal        []Action       `json:"legal"`
+	Over         bool           `json:"over"`
+	Scores       []int          `json:"scores,omitempty"`
 }
 
 @ 자리를 맡지 않은 {\it 관전자\/}도 뷰를 받을 수 있어야 한다. 그 자리 번호가
@@ -1600,10 +1601,10 @@ func (s *State) ViewJSON(player int) ([]byte, error) {
 클라이언트가 처음에 한 번만 받아 두면 된다. |Catalog|가 그 표를 내준다.
 @<플레이어 뷰@>=
 type BeanInfoView struct {
-	ID    Bean   @t\quad@> `json:"id"`
-	Name  string @t\quad@> `json:"name"`
-	Count int    @t\quad@> `json:"count"`
-	Meter [4]int @t\quad@> `json:"meter"`
+	ID    Bean    `json:"id"`
+	Name  string  `json:"name"`
+	Count int     `json:"count"`
+	Meter [4]int  `json:"meter"`
 }
 
 func Catalog() []BeanInfoView {
