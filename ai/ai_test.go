@@ -1,9 +1,9 @@
-//line ai/ai.w:848
+//line ai/ai.gw:848
 package ai
 
 import "testing"
 
-//line ai/ai.w:862
+//line ai/ai.gw:862
 func soleWinner(scores []int, seat int) bool {
 	for i, sc := range scores {
 		if i != seat && sc >= scores[seat] {
@@ -13,7 +13,7 @@ func soleWinner(scores []int, seat int) bool {
 	return true
 }
 
-//line ai/ai.w:874
+//line ai/ai.gw:874
 func TestGreedyBeatsRandom(t *testing.T) {
 	const N = 300
 	gWins, rWins, ties := 0, 0, 0
@@ -48,7 +48,7 @@ func TestGreedyBeatsRandom(t *testing.T) {
 	}
 }
 
-//line ai/ai.w:913
+//line ai/ai.gw:913
 func TestArenaMultiplayer(t *testing.T) {
 	const N = 300
 	for _, n := range []int{3, 4, 5, 6, 7} {
@@ -77,7 +77,7 @@ func TestArenaMultiplayer(t *testing.T) {
 	}
 }
 
-//line ai/ai.w:946
+//line ai/ai.gw:946
 func TestTradingRaisesScores(t *testing.T) {
 	for _, n := range []int{3, 4} {
 		cautious := avgScore(t, n, false)
@@ -91,14 +91,14 @@ func TestTradingRaisesScores(t *testing.T) {
 	}
 }
 
-//line ai/ai.w:962
+//line ai/ai.gw:962
 func TestDuelHasNoTrading(t *testing.T) {
 	if a, b := avgScore(t, 2, false), avgScore(t, 2, true); a != b {
 		t.Errorf("2인 결투에 거래가 스몄다: 비거래 %.4f, 거래 %.4f", a, b)
 	}
 }
 
-//line ai/ai.w:970
+//line ai/ai.gw:970
 func avgScore(t *testing.T, n int, trade bool) float64 {
 	const N = 200
 	total := 0
@@ -122,7 +122,7 @@ func avgScore(t *testing.T, n int, trade bool) float64 {
 	return float64(total) / float64(N*n)
 }
 
-//line ai/ai.w:997
+//line ai/ai.gw:997
 func TestTradingVsCautious(t *testing.T) {
 	const N = 400
 	wins, mine, theirs := 0, 0, 0
@@ -138,7 +138,7 @@ func TestTradingVsCautious(t *testing.T) {
 			t.Fatal(err)
 		}
 
-//line ai/ai.w:1017
+//line ai/ai.gw:1017
 		if soleWinner(scores, seat) {
 			wins++
 		}
@@ -150,10 +150,10 @@ func TestTradingVsCautious(t *testing.T) {
 			}
 		}
 
-//line ai/ai.w:1012
+//line ai/ai.gw:1012
 	}
 
-//line ai/ai.w:1035
+//line ai/ai.gw:1035
 	mineAvg, theirsAvg := float64(mine)/N, float64(theirs)/(3*N)
 	t.Logf("거래 봇 평균 %.2f, 비거래 봇 평균 %.2f, 거래 봇 승률 %.1f%%(공정 몫 25%%)",
 		mineAvg, theirsAvg, 100*float64(wins)/N)
@@ -161,10 +161,10 @@ func TestTradingVsCautious(t *testing.T) {
 		t.Errorf("거래 봇이 비거래 봇보다 점수가 낮음: %.2f 대 %.2f", mineAvg, theirsAvg)
 	}
 
-//line ai/ai.w:1014
+//line ai/ai.gw:1014
 }
 
-//line ai/ai.w:1060
+//line ai/ai.gw:1060
 func TestStrategistBeatsGreedy(t *testing.T) {
 	const N = 600
 	for _, n := range []int{3, 4} {
@@ -178,7 +178,7 @@ func TestStrategistBeatsGreedy(t *testing.T) {
 	}
 }
 
-//line ai/ai.w:1076
+//line ai/ai.gw:1076
 func oddOneOut(t *testing.T, n, N int, mk func() Policy) (float64, float64, float64) {
 	wins, mine, theirs := 0, 0, 0
 	for seed := uint64(0); seed < uint64(N); seed++ {
@@ -193,7 +193,7 @@ func oddOneOut(t *testing.T, n, N int, mk func() Policy) (float64, float64, floa
 			t.Fatal(err)
 		}
 
-//line ai/ai.w:1096
+//line ai/ai.gw:1096
 		if soleWinner(scores, seat) {
 			wins++
 		}
@@ -205,13 +205,13 @@ func oddOneOut(t *testing.T, n, N int, mk func() Policy) (float64, float64, floa
 			}
 		}
 
-//line ai/ai.w:1090
+//line ai/ai.gw:1090
 	}
 	return float64(wins) / float64(N), float64(mine) / float64(N),
 		float64(theirs) / float64(N*(n-1))
 }
 
-//line ai/ai.w:1112
+//line ai/ai.gw:1112
 func TestStrategistWidensTheGap(t *testing.T) {
 	const N = 400
 	_, gs, go_ := oddOneOut(t, 3, N, func() Policy { return NewGreedy() })
@@ -223,7 +223,7 @@ func TestStrategistWidensTheGap(t *testing.T) {
 	}
 }
 
-//line ai/ai.w:1130
+//line ai/ai.gw:1130
 func TestAllStrategistShrinksThePie(t *testing.T) {
 	const N = 300
 	v2 := allSame(t, 3, N, func() Policy { return NewGreedy() })
@@ -236,7 +236,7 @@ func TestAllStrategistShrinksThePie(t *testing.T) {
 	}
 }
 
-//line ai/ai.w:1143
+//line ai/ai.gw:1143
 func allSame(t *testing.T, n, N int, mk func() Policy) float64 {
 	total := 0
 	for seed := uint64(0); seed < uint64(N); seed++ {

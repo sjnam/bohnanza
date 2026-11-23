@@ -1,4 +1,4 @@
-//line engine/engine.w:44
+//line engine/engine.gw:44
 package engine
 
 import (
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-//line engine/engine.w:84
+//line engine/engine.gw:84
 type Bean int
 
 const (
@@ -25,12 +25,12 @@ const (
 	Cocoa
 	NumBeans
 
-//line engine/engine.w:99
+//line engine/engine.gw:99
 )
 
 type Card = Bean // |Card|는 콩 한 알과 같다.
 
-//line engine/engine.w:106
+//line engine/engine.gw:106
 type BeanInfo struct {
 	Name  string
 	Count int    // 덱에 들어가는 장수
@@ -53,7 +53,7 @@ var beanTable = [NumBeans]BeanInfo{
 
 const TotalCards = 154 // 덱 전체 장수(154)다.
 
-//line engine/engine.w:132
+//line engine/engine.gw:132
 func (b Bean) Name() string { return beanTable[b].Name }
 
 func (b Bean) Coins(n int) int {
@@ -66,7 +66,7 @@ func (b Bean) Coins(n int) int {
 	return c
 }
 
-//line engine/engine.w:155
+//line engine/engine.gw:155
 type Variant struct {
 	Drop       []Bean // 이 인원에서는 덱에 넣지 않는 콩
 	StartField int    // 각자 시작할 때 받는 밭 칸수
@@ -77,7 +77,7 @@ type Variant struct {
 	Duel       bool   // 2인 콩 결투 규칙인가
 }
 
-//line engine/engine.w:170
+//line engine/engine.gw:170
 func variantFor(n int) Variant {
 	switch n {
 	case 2: // 콩 결투
@@ -115,7 +115,7 @@ func (v Variant) drops(b Bean) bool {
 	return false
 }
 
-//line engine/engine.w:257
+//line engine/engine.gw:257
 type Field struct {
 	Crop  Bean // 이 밭에서 자라는 콩(작물)
 	Count int
@@ -132,7 +132,7 @@ type Player struct {
 
 func (p *Player) Coins() int { return len(p.Treasury) }
 
-//line engine/engine.w:280
+//line engine/engine.gw:280
 type Phase int
 
 const (
@@ -143,10 +143,10 @@ const (
 	PhaseDuelDraw                  // 결투: 뽑은 콩을 심고 남기기
 	GameOver
 
-//line engine/engine.w:289
+//line engine/engine.gw:289
 )
 
-//line engine/engine.w:293
+//line engine/engine.gw:293
 func (p Phase) String() string {
 	switch p {
 	case PhasePlant:
@@ -163,7 +163,7 @@ func (p Phase) String() string {
 	return "종료"
 }
 
-//line engine/engine.w:316
+//line engine/engine.gw:316
 type State struct {
 	Players    []*Player
 	Deck       []Card
@@ -181,7 +181,7 @@ type State struct {
 	rng *rand.Rand
 }
 
-//line engine/engine.w:338
+//line engine/engine.gw:338
 type Proposal struct {
 	From       int
 	To         int
@@ -190,10 +190,10 @@ type Proposal struct {
 	GetHand    []Card // To가 손패에서 내주는 콩
 }
 
-//line engine/engine.w:351
+//line engine/engine.gw:351
 const StartingHand = 5
 
-//line engine/engine.w:352
+//line engine/engine.gw:352
 const MaxPlayers = 7
 
 func New(numPlayers int, seed uint64) (*State, error) {
@@ -204,7 +204,7 @@ func New(numPlayers int, seed uint64) (*State, error) {
 	s := &State{rng: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)),
 		Rules: variantFor(numPlayers)}
 
-//line engine/engine.w:370
+//line engine/engine.gw:370
 	for b := Bean(0); b < NumBeans; b++ {
 		pile := &s.Deck
 		if s.Rules.drops(b) {
@@ -218,9 +218,9 @@ func New(numPlayers int, seed uint64) (*State, error) {
 		s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i]
 	})
 
-//line engine/engine.w:362
+//line engine/engine.gw:362
 
-//line engine/engine.w:385
+//line engine/engine.gw:385
 	for i := 0; i < numPlayers; i++ {
 		s.Players = append(s.Players, &Player{Fields: make([]Field, s.Rules.StartField)})
 	}
@@ -231,11 +231,11 @@ func New(numPlayers int, seed uint64) (*State, error) {
 		}
 	}
 
-//line engine/engine.w:363
+//line engine/engine.gw:363
 	return s, nil
 }
 
-//line engine/engine.w:401
+//line engine/engine.gw:401
 func (s *State) draw() (Card, bool) {
 	if len(s.Deck) == 0 {
 		s.Exhaust++
@@ -252,7 +252,7 @@ func (s *State) draw() (Card, bool) {
 	return c, true
 }
 
-//line engine/engine.w:420
+//line engine/engine.gw:420
 func (s *State) endIfEmpty(ok bool) bool {
 	if !ok {
 		s.Stage = GameOver
@@ -260,7 +260,7 @@ func (s *State) endIfEmpty(ok bool) bool {
 	return ok
 }
 
-//line engine/engine.w:432
+//line engine/engine.gw:432
 func (s *State) plant(p *Player, field int, b Bean) error {
 	if field < 0 || field >= len(p.Fields) {
 		return fmt.Errorf("보난자: 밭 번호 %d가 범위를 벗어남", field)
@@ -277,7 +277,7 @@ func (s *State) plant(p *Player, field int, b Bean) error {
 	return nil
 }
 
-//line engine/engine.w:453
+//line engine/engine.gw:453
 func (p *Player) canHarvest(field int) bool {
 	f := p.Fields[field]
 	if f.Count == 0 {
@@ -293,7 +293,7 @@ func (p *Player) canHarvest(field int) bool {
 	return true
 }
 
-//line engine/engine.w:477
+//line engine/engine.gw:477
 func (s *State) harvest(p *Player, field int) (int, error) {
 	if field < 0 || field >= len(p.Fields) {
 		return 0, fmt.Errorf("보난자: 밭 번호 %d가 범위를 벗어남", field)
@@ -313,7 +313,7 @@ func (s *State) harvest(p *Player, field int) (int, error) {
 	return coins, nil
 }
 
-//line engine/engine.w:501
+//line engine/engine.gw:501
 func (s *State) endTurn() {
 	if !s.refill() {
 		return
@@ -324,7 +324,7 @@ func (s *State) endTurn() {
 	s.Stage = s.openingPhase()
 }
 
-//line engine/engine.w:516
+//line engine/engine.gw:516
 func (s *State) refill() bool {
 	n := len(s.Players)
 	for k := 0; k < s.Rules.Refill; k++ {
@@ -343,7 +343,7 @@ func (s *State) refill() bool {
 	return true
 }
 
-//line engine/engine.w:539
+//line engine/engine.gw:539
 func (s *State) openingPhase() Phase {
 	if s.Rules.Duel && len(s.FaceUp) > 0 {
 		return PhaseOffer
@@ -351,7 +351,7 @@ func (s *State) openingPhase() Phase {
 	return PhasePlant
 }
 
-//line engine/engine.w:551
+//line engine/engine.gw:551
 func (s *State) ToAct() int {
 	switch s.Stage {
 	case PhasePlant, PhaseOffer, PhaseDuelDraw:
@@ -371,7 +371,7 @@ func (s *State) ToAct() int {
 	return -1
 }
 
-//line engine/engine.w:572
+//line engine/engine.gw:572
 func (s *State) giftsPending() bool {
 	for i := range s.Players {
 		if len(s.Players[i].Acquired) > 0 {
@@ -381,7 +381,7 @@ func (s *State) giftsPending() bool {
 	return false
 }
 
-//line engine/engine.w:589
+//line engine/engine.gw:589
 type ActionKind int
 
 const (
@@ -397,7 +397,7 @@ const (
 	TossHand                       // 결투: 손패 아무 데서나 한 장 버리기
 )
 
-//line engine/engine.w:609
+//line engine/engine.gw:609
 type Action struct {
 	Kind     ActionKind `json:"kind"`
 	Actor    int        `json:"player"` // 이 수를 두는 사람
@@ -414,7 +414,7 @@ type Action struct {
 	Accept bool `json:"accept,omitempty"` // |RespondTrade|용: 수락 여부
 }
 
-//line engine/engine.w:627
+//line engine/engine.gw:627
 func (a Action) String() string {
 	switch a.Kind {
 	case PlantFront:
@@ -444,7 +444,7 @@ func (a Action) String() string {
 	return "알 수 없는 수"
 }
 
-//line engine/engine.w:659
+//line engine/engine.gw:659
 func beanNames(cs []Card) string {
 	if len(cs) == 0 {
 		return "없음"
@@ -462,7 +462,7 @@ func (a Action) tradeString() string {
 		a.To, beanNames(give), beanNames(a.GetHand))
 }
 
-//line engine/engine.w:681
+//line engine/engine.gw:681
 func (s *State) Legal(player int) []Action {
 	if player == Spectator || s.Stage == GameOver || player != s.ToAct() {
 		return nil
@@ -485,7 +485,7 @@ func (s *State) Legal(player int) []Action {
 	return nil
 }
 
-//line engine/engine.w:709
+//line engine/engine.gw:709
 func (s *State) legalPlant(player int) []Action {
 	p := s.Players[player]
 	var acts []Action
@@ -508,7 +508,7 @@ func (s *State) legalPlant(player int) []Action {
 	return acts
 }
 
-//line engine/engine.w:736
+//line engine/engine.gw:736
 func (s *State) tossActions(player int) []Action {
 	if !s.Rules.Duel || s.HandTossed {
 		return nil
@@ -520,7 +520,7 @@ func (s *State) tossActions(player int) []Action {
 	return acts
 }
 
-//line engine/engine.w:750
+//line engine/engine.gw:750
 func (s *State) harvestActions(player int) []Action {
 	p := s.Players[player]
 	var acts []Action
@@ -532,7 +532,7 @@ func (s *State) harvestActions(player int) []Action {
 	return acts
 }
 
-//line engine/engine.w:765
+//line engine/engine.gw:765
 func (s *State) legalTrade(player int) []Action {
 	var acts []Action
 	for c := range s.FaceUp {
@@ -546,7 +546,7 @@ func (s *State) legalTrade(player int) []Action {
 	return acts
 }
 
-//line engine/engine.w:784
+//line engine/engine.gw:784
 func (s *State) legalRespond(player int) []Action {
 	var acts []Action
 	if s.Pending != nil && containsAll(s.Players[player].Hand, s.Pending.GetHand) {
@@ -555,7 +555,7 @@ func (s *State) legalRespond(player int) []Action {
 	return append(acts, Action{Kind: RespondTrade, Actor: player, Accept: false})
 }
 
-//line engine/engine.w:794
+//line engine/engine.gw:794
 func (s *State) takeActions(player, card int) []Action {
 	p := s.Players[player]
 	b := s.FaceUp[card]
@@ -568,7 +568,7 @@ func (s *State) takeActions(player, card int) []Action {
 	return acts
 }
 
-//line engine/engine.w:811
+//line engine/engine.gw:811
 func (s *State) proposeActions(player int) []Action {
 	var acts []Action
 	mine := distinct(s.Players[player].Hand)
@@ -579,7 +579,7 @@ func (s *State) proposeActions(player int) []Action {
 		}
 		theirs := distinct(s.Players[to].Hand)
 
-//line engine/engine.w:828
+//line engine/engine.gw:828
 		for _, gb := range mine {
 			for _, tb := range theirs {
 				acts = append(acts, Action{Kind: ProposeTrade, Actor: player, To: to,
@@ -597,12 +597,12 @@ func (s *State) proposeActions(player int) []Action {
 				GiveFaceUp: []Card{gb}})
 		}
 
-//line engine/engine.w:821
+//line engine/engine.gw:821
 	}
 	return acts
 }
 
-//line engine/engine.w:848
+//line engine/engine.gw:848
 func distinct(cs []Card) []Card {
 	seen := make(map[Card]bool)
 	var out []Card
@@ -615,7 +615,7 @@ func distinct(cs []Card) []Card {
 	return out
 }
 
-//line engine/engine.w:863
+//line engine/engine.gw:863
 func (s *State) legalGifts(player int) []Action {
 	p := s.Players[player]
 	var acts []Action
@@ -629,7 +629,7 @@ func (s *State) legalGifts(player int) []Action {
 	return acts
 }
 
-//line engine/engine.w:881
+//line engine/engine.gw:881
 func (s *State) legalOffer(player int) []Action {
 	var acts []Action
 	for c := range s.FaceUp {
@@ -639,7 +639,7 @@ func (s *State) legalOffer(player int) []Action {
 	return append(acts, s.harvestActions(player)...)
 }
 
-//line engine/engine.w:894
+//line engine/engine.gw:894
 func (s *State) legalDuelDraw(player int) []Action {
 	var acts []Action
 	for c := range s.FaceUp {
@@ -649,10 +649,10 @@ func (s *State) legalDuelDraw(player int) []Action {
 	return append(acts, Action{Kind: EndPhase, Actor: player})
 }
 
-//line engine/engine.w:915
+//line engine/engine.gw:915
 type EventKind string
 
-//line engine/engine.w:921
+//line engine/engine.gw:921
 const (
 	Planted       EventKind = "planted"       // 손패 맨 앞 카드를 밭에 심음
 	PlantedFaceUp EventKind = "plantedFaceUp" // 공개 카드를 밭에 심음
@@ -671,7 +671,7 @@ const (
 	Fished        EventKind = "fished"        // 버림 더미에서 같은 콩을 끌어올림
 )
 
-//line engine/engine.w:944
+//line engine/engine.gw:944
 const NoActor = -1
 
 type Event struct {
@@ -685,11 +685,11 @@ type Event struct {
 	Get     []Card    `json:"get,omitempty"`  // 제안자가 받는 콩
 }
 
-//line engine/engine.w:962
+//line engine/engine.gw:962
 func (e Event) String() string {
 	switch e.Kind {
 
-//line engine/engine.w:970
+//line engine/engine.gw:970
 	case Planted, PlantedFaceUp, PlantedGift:
 		return fmt.Sprintf("%d번이 %s%s %d번 밭에 심음", e.Actor,
 			e.Crop.Name(), objectParticle(e.Crop.Name()), e.FieldNo)
@@ -702,7 +702,7 @@ func (e Event) String() string {
 		return fmt.Sprintf("공개 카드로 %s%s 뒤집힘",
 			e.Crop.Name(), subjectParticle(e.Crop.Name()))
 
-//line engine/engine.w:984
+//line engine/engine.gw:984
 	case TradeProposed:
 		return fmt.Sprintf("%d번이 %d번에게 [%s] 주고 [%s] 받기를 제안",
 			e.Actor, e.To, beanNames(e.Give), beanNames(e.Get))
@@ -718,7 +718,7 @@ func (e Event) String() string {
 	case TurnPassed:
 		return "턴을 넘김"
 
-//line engine/engine.w:1001
+//line engine/engine.gw:1001
 	case Tossed:
 		return fmt.Sprintf("%d번이 %s%s 버림", e.Actor,
 			e.Crop.Name(), objectParticle(e.Crop.Name()))
@@ -729,12 +729,12 @@ func (e Event) String() string {
 		return fmt.Sprintf("버림 더미에서 %s%s 딸려 올라옴",
 			e.Crop.Name(), subjectParticle(e.Crop.Name()))
 
-//line engine/engine.w:965
+//line engine/engine.gw:965
 	}
 	return string(e.Kind)
 }
 
-//line engine/engine.w:1017
+//line engine/engine.gw:1017
 func hasFinal(name string) bool {
 	r := []rune(name)
 	if len(r) == 0 {
@@ -761,7 +761,7 @@ func subjectParticle(name string) string {
 	return "가"
 }
 
-//line engine/engine.w:1048
+//line engine/engine.gw:1048
 func (s *State) Apply(a Action) ([]Event, error) {
 	if s.Stage == GameOver {
 		return nil, fmt.Errorf("보난자: 게임이 이미 끝남")
@@ -797,7 +797,7 @@ func (s *State) Apply(a Action) ([]Event, error) {
 	return nil, fmt.Errorf("보난자: 알 수 없는 액션")
 }
 
-//line engine/engine.w:1086
+//line engine/engine.gw:1086
 func (s *State) applyPlantFront(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if s.PlantCount >= 2 {
@@ -816,7 +816,7 @@ func (s *State) applyPlantFront(a Action) ([]Event, error) {
 		Crop: b, FieldNo: a.FieldNo}}, nil
 }
 
-//line engine/engine.w:1106
+//line engine/engine.gw:1106
 func (s *State) applyHarvest(a Action) ([]Event, error) {
 	p := s.Players[a.Actor]
 	b := p.Fields[a.FieldNo].Crop
@@ -828,7 +828,7 @@ func (s *State) applyHarvest(a Action) ([]Event, error) {
 		Crop: b, FieldNo: a.FieldNo, Coins: coins}}, nil
 }
 
-//line engine/engine.w:1119
+//line engine/engine.gw:1119
 func (s *State) applyBuyField(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if len(p.Fields) != 2 {
@@ -844,7 +844,7 @@ func (s *State) applyBuyField(a Action) ([]Event, error) {
 	return []Event{{Kind: BoughtField, Actor: a.Actor, To: NoActor}}, nil
 }
 
-//line engine/engine.w:1138
+//line engine/engine.gw:1138
 func (s *State) applyEndPhase(_ Action) ([]Event, error) {
 	switch s.Stage {
 	case PhasePlant:
@@ -864,7 +864,7 @@ func (s *State) applyEndPhase(_ Action) ([]Event, error) {
 	return nil, fmt.Errorf("보난자: 이 단계는 끝낼 수 없음")
 }
 
-//line engine/engine.w:1159
+//line engine/engine.gw:1159
 func (s *State) flipAndTrade() ([]Event, error) {
 	var ev []Event
 	for i := 0; i < 2; i++ {
@@ -881,7 +881,7 @@ func (s *State) flipAndTrade() ([]Event, error) {
 	return ev, nil
 }
 
-//line engine/engine.w:1180
+//line engine/engine.gw:1180
 func (s *State) beginDuelDraw() ([]Event, error) {
 	var ev []Event
 	for i := 0; i < 3; i++ {
@@ -895,7 +895,7 @@ func (s *State) beginDuelDraw() ([]Event, error) {
 			Actor: NoActor, To: NoActor, Crop: c})
 	}
 
-//line engine/engine.w:1198
+//line engine/engine.gw:1198
 	for len(s.Discard) > 0 {
 		top := s.Discard[len(s.Discard)-1]
 		if !containsAll(s.FaceUp, []Card{top}) {
@@ -906,12 +906,12 @@ func (s *State) beginDuelDraw() ([]Event, error) {
 		ev = append(ev, Event{Kind: Fished, Actor: NoActor, To: NoActor, Crop: top})
 	}
 
-//line engine/engine.w:1193
+//line engine/engine.gw:1193
 	s.Stage = PhaseDuelDraw
 	return ev, nil
 }
 
-//line engine/engine.w:1213
+//line engine/engine.gw:1213
 func (s *State) endDuelTurn() ([]Event, error) {
 	var ev []Event
 	if len(s.FaceUp) > 0 {
@@ -923,7 +923,7 @@ func (s *State) endDuelTurn() ([]Event, error) {
 	return append(ev, Event{Kind: TurnPassed, Actor: NoActor, To: NoActor}), nil
 }
 
-//line engine/engine.w:1227
+//line engine/engine.gw:1227
 func (s *State) endTradePhase() ([]Event, error) {
 	if len(s.FaceUp) > 0 {
 		return nil, fmt.Errorf("보난자: 공개 카드를 모두 처리해야 함")
@@ -936,7 +936,7 @@ func (s *State) endTradePhase() ([]Event, error) {
 	return []Event{{Kind: TurnPassed, Actor: NoActor, To: NoActor}}, nil
 }
 
-//line engine/engine.w:1242
+//line engine/engine.gw:1242
 func (s *State) applyTake(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if a.FaceUpNo < 0 || a.FaceUpNo >= len(s.FaceUp) {
@@ -952,7 +952,7 @@ func (s *State) applyTake(a Action) ([]Event, error) {
 		Crop: b, FieldNo: a.FieldNo}}, nil
 }
 
-//line engine/engine.w:1260
+//line engine/engine.gw:1260
 func (s *State) applyTossRevealed(a Action) ([]Event, error) {
 	if s.Stage != PhaseOffer {
 		return nil, fmt.Errorf("보난자: 지금은 공개 카드를 버릴 수 없음")
@@ -967,14 +967,14 @@ func (s *State) applyTossRevealed(a Action) ([]Event, error) {
 	return []Event{{Kind: Tossed, Actor: a.Actor, To: NoActor, Crop: b}}, nil
 }
 
-//line engine/engine.w:1277
+//line engine/engine.gw:1277
 func (s *State) offerDone() {
 	if s.Stage == PhaseOffer && len(s.FaceUp) == 0 {
 		s.Stage = PhasePlant
 	}
 }
 
-//line engine/engine.w:1287
+//line engine/engine.gw:1287
 func (s *State) applyTossHand(a Action) ([]Event, error) {
 	p := s.Players[s.Active]
 	if !s.Rules.Duel || s.Stage != PhasePlant {
@@ -996,7 +996,7 @@ func (s *State) applyTossHand(a Action) ([]Event, error) {
 	return []Event{{Kind: Tossed, Actor: a.Actor, To: NoActor, Crop: b}}, nil
 }
 
-//line engine/engine.w:1316
+//line engine/engine.gw:1316
 func (s *State) applyPropose(a Action) ([]Event, error) {
 	if a.To == s.Active || a.To < 0 || a.To >= len(s.Players) {
 		return nil, fmt.Errorf("보난자: 거래 상대가 잘못됨")
@@ -1005,7 +1005,7 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 		return nil, fmt.Errorf("보난자: 빈 거래는 제안할 수 없음")
 	}
 
-//line engine/engine.w:1337
+//line engine/engine.gw:1337
 	if !containsAll(s.Players[s.Active].Hand, a.GiveHand) {
 		return nil, fmt.Errorf("보난자: 내 손패에 없는 콩을 줄 수 없음")
 	}
@@ -1013,7 +1013,7 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 		return nil, fmt.Errorf("보난자: 공개되지 않은 콩을 줄 수 없음")
 	}
 
-//line engine/engine.w:1324
+//line engine/engine.gw:1324
 	s.Pending = &Proposal{From: s.Active, To: a.To,
 		GiveHand:   append([]Card{}, a.GiveHand...),
 		GiveFaceUp: append([]Card{}, a.GiveFaceUp...),
@@ -1023,7 +1023,7 @@ func (s *State) applyPropose(a Action) ([]Event, error) {
 		Give: give, Get: append([]Card{}, a.GetHand...)}}, nil
 }
 
-//line engine/engine.w:1347
+//line engine/engine.gw:1347
 func (s *State) applyRespond(a Action) ([]Event, error) {
 	pr := s.Pending
 	if pr == nil {
@@ -1034,7 +1034,7 @@ func (s *State) applyRespond(a Action) ([]Event, error) {
 		return []Event{{Kind: TradeRejected, Actor: a.Actor, To: NoActor}}, nil
 	}
 
-//line engine/engine.w:1366
+//line engine/engine.gw:1366
 	from, to := s.Players[pr.From], s.Players[pr.To]
 	if !containsAll(from.Hand, pr.GiveHand) ||
 		!containsAll(s.FaceUp, pr.GiveFaceUp) ||
@@ -1052,10 +1052,10 @@ func (s *State) applyRespond(a Action) ([]Event, error) {
 	return []Event{{Kind: TradeAccepted, Actor: pr.From, To: pr.To,
 		Give: give, Get: append([]Card{}, pr.GetHand...)}}, nil
 
-//line engine/engine.w:1357
+//line engine/engine.gw:1357
 }
 
-//line engine/engine.w:1386
+//line engine/engine.gw:1386
 func containsAll(pool, want []Card) bool {
 	cnt := make(map[Card]int)
 	for _, c := range pool {
@@ -1083,7 +1083,7 @@ func removeBeans(pool, drop []Card) []Card {
 	return out
 }
 
-//line engine/engine.w:1416
+//line engine/engine.gw:1416
 func (s *State) applyPlantGift(a Action) ([]Event, error) {
 	p := s.Players[a.Actor]
 	b := p.Acquired[0]
@@ -1100,12 +1100,12 @@ func (s *State) applyPlantGift(a Action) ([]Event, error) {
 	return ev, nil
 }
 
-//line engine/engine.w:1434
+//line engine/engine.gw:1434
 func removeCard(cs []Card, i int) []Card {
 	return append(cs[:i:i], cs[i+1:]...)
 }
 
-//line engine/engine.w:1442
+//line engine/engine.gw:1442
 func (s *State) Over() bool { return s.Stage == GameOver }
 
 func (s *State) Scores() []int {
@@ -1119,7 +1119,7 @@ func (s *State) Scores() []int {
 	return sc
 }
 
-//line engine/engine.w:1458
+//line engine/engine.gw:1458
 func (s *State) countCards() int {
 	n := len(s.Deck) + len(s.Discard) + len(s.FaceUp) + len(s.Removed)
 	for _, p := range s.Players {
@@ -1138,7 +1138,7 @@ func (s *State) Check() error {
 	return nil
 }
 
-//line engine/engine.w:1487
+//line engine/engine.gw:1487
 type FieldView struct {
 	Crop  Bean `json:"bean"` // Count가 0이면 빈 밭이라 의미 없음
 	Count int  `json:"count"`
@@ -1154,7 +1154,7 @@ type PlayerView struct {
 	Hand      []Bean      `json:"hand,omitempty"` // 본인만 채워진다
 }
 
-//line engine/engine.w:1505
+//line engine/engine.gw:1505
 type ProposalView struct {
 	From       int    `json:"from"`
 	To         int    `json:"to"`
@@ -1163,7 +1163,7 @@ type ProposalView struct {
 	GetHand    []Bean `json:"getHand"`
 }
 
-//line engine/engine.w:1516
+//line engine/engine.gw:1516
 type View struct {
 	You          int           `json:"you"`
 	Active       int           `json:"active"`
@@ -1180,7 +1180,7 @@ type View struct {
 	Scores       []int         `json:"scores,omitempty"`
 }
 
-//line engine/engine.w:1539
+//line engine/engine.gw:1539
 const Spectator = -1 // 자리를 맡지 않고 보기만 하는 이
 
 func (s *State) View(player int) View {
@@ -1200,7 +1200,7 @@ func (s *State) View(player int) View {
 		v.Players = append(v.Players, s.playerView(i, p, player))
 	}
 
-//line engine/engine.w:1563
+//line engine/engine.gw:1563
 	if s.Pending != nil {
 		pr := s.Pending
 		v.Pending = &ProposalView{From: pr.From, To: pr.To,
@@ -1212,11 +1212,11 @@ func (s *State) View(player int) View {
 		v.Scores = s.Scores()
 	}
 
-//line engine/engine.w:1558
+//line engine/engine.gw:1558
 	return v
 }
 
-//line engine/engine.w:1577
+//line engine/engine.gw:1577
 func (s *State) playerView(i int, p *Player, viewer int) PlayerView {
 	pv := PlayerView{
 		Index:     i,
@@ -1234,12 +1234,12 @@ func (s *State) playerView(i int, p *Player, viewer int) PlayerView {
 	return pv
 }
 
-//line engine/engine.w:1596
+//line engine/engine.gw:1596
 func (s *State) ViewJSON(player int) ([]byte, error) {
 	return json.Marshal(s.View(player))
 }
 
-//line engine/engine.w:1603
+//line engine/engine.gw:1603
 type BeanInfoView struct {
 	ID    Bean   `json:"id"`
 	Name  string `json:"name"`

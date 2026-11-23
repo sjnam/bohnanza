@@ -27,31 +27,31 @@ CLI든 봇이든 웹이든 모두 **똑같은 계약**을 쓰고, 남의 손패�
 - **실시간 웹** — 표준 라이브러리(`net/http`)만으로 SSE 밀어내기 + POST.
   방 코드·자리별 토큰 인증, 새로고침 후 이어 하기, 자유형 다장 거래 빌더,
   참가자 이름, 거래 흥정용 채팅까지.
-- **문학적 프로그래밍** — 코드가 곧 읽는 문서다. 모든 백엔드는 `.w` 하나가
+- **문학적 프로그래밍** — 코드가 곧 읽는 문서다. 모든 백엔드는 `.gw` 하나가
   Go 소스와 조판된 PDF를 함께 낳는다.
 
 ## 구조
 
 ```mermaid
 graph TD
-  E["engine/engine.w — 순수 게임 엔진 (package engine)"]
-  E --> C["cli/cli.w — 터미널 클라이언트"]
-  E --> B["ai/ai.w — AI 정책 + 대전장"]
-  E --> S["server/server.w — HTTP·SSE 서버"]
+  E["engine/engine.gw — 순수 게임 엔진 (package engine)"]
+  E --> C["cli/cli.gw — 터미널 클라이언트"]
+  E --> B["ai/ai.gw — AI 정책 + 대전장"]
+  E --> S["server/server.gw — HTTP·SSE 서버"]
   B --> S
   S --> W["server/web/index.html — 브라우저 UI"]
 ```
 
 | 파일 | 내용 | tangle 산출 |
 | --- | --- | --- |
-| `engine/engine.w` | 순수 게임 엔진 | `engine/engine.go`, `engine/engine_test.go` |
-| `cli/cli.w` | 핫시트·봇 대전 터미널 | `cli/cli.go` |
-| `ai/ai.w` | 봇 정책과 대전장 | `ai/ai.go`, `ai/ai_test.go` |
-| `server/server.w` | 게임 서버 | `server/server.go` |
+| `engine/engine.gw` | 순수 게임 엔진 | `engine/engine.go`, `engine/engine_test.go` |
+| `cli/cli.gw` | 핫시트·봇 대전 터미널 | `cli/cli.go` |
+| `ai/ai.gw` | 봇 정책과 대전장 | `ai/ai.go`, `ai/ai_test.go` |
+| `server/server.gw` | 게임 서버 | `server/server.go` |
 | `server/web/index.html` | 자체 완결형 웹 UI(정적) | — |
-| `types.w` | 문서들이 공유하는 조판 힌트 | — |
+| `types.gw` | 문서들이 공유하는 조판 힌트 | — |
 
-`.w` 파일은 `@i types.w`로 공유 힌트를 끌어 쓴다. 웹 UI만은 문학적 문서가
+`.gw` 파일은 `@i types.gw`로 공유 힌트를 끌어 쓴다. 웹 UI만은 문학적 문서가
 아니라 평범한 정적 파일이며, 앞단의 nginx가 직접 내보낸다(게임 서버는 API에만
 집중한다).
 
@@ -59,7 +59,7 @@ graph TD
 
 - **Go 1.26 이상** — 이것만 있으면 clone 후 바로 빌드된다. tangle 산출물
   (`*.go`)을 저장소에 함께 두어, 받는 쪽엔 GWEB이 필요 없다.
-- **GWEB**(`gtangle`, `gweave`) — `.w`를 **고칠 때만** 필요하다. `.w`를
+- **GWEB**(`gtangle`, `gweave`) — `.gw`를 **고칠 때만** 필요하다. `.gw`를
   Go 소스와 TeX로 바꾼다. 고쳤다면 `make tangle`로 `.go`를 다시 낳는다.
 - (문서 PDF를 뽑을 때만) **LuaTeX**와 `kotexgweb`
 
@@ -70,13 +70,13 @@ graph TD
 | 명령 | 하는 일 |
 | --- | --- |
 | `make` | tangle + 문서 조판 |
-| `make tangle` | `.w` → `.go` |
+| `make tangle` | `.gw` → `.go` |
 | `make test` | `go test ./...` (엔진·봇 시험) |
 | `make arena` | 봇 실력 측정(`go test -v ./ai`) |
 | `make cli ARGS="3 1 42"` | CLI 실행(인원·사람수·씨앗) |
 | `make server ARGS=":8080"` | 서버 실행(주소) |
 | `make doc` | PDF 조판(한글이라 LuaTeX) |
-| `make clean` | 생성물 삭제(`.w` 원본은 남김) |
+| `make clean` | 생성물 삭제(`.gw` 원본은 남김) |
 
 ### 터미널에서 봇과 대결
 
@@ -134,7 +134,7 @@ docker compose up --build
   그대로 빌드하므로 이미지 안에서 GWEB이 필요 없다.
 
 이미지 같은 정적 파일을 더할 때는 `server/web/` 아래에 두면 nginx가 바로 낸다.
-`.w`를 고쳤다면 `make tangle`로 `.go`를 갱신한 뒤 다시 빌드한다.
+`.gw`를 고쳤다면 `make tangle`로 `.go`를 갱신한 뒤 다시 빌드한다.
 
 ## 서버 API
 

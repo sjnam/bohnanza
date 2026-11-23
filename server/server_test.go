@@ -1,4 +1,4 @@
-//line server/server.w:841
+//line server/server.gw:841
 package main
 
 import (
@@ -9,7 +9,7 @@ import (
 	bz "github.com/sjnam/bohnanza/engine"
 )
 
-//line server/server.w:857
+//line server/server.gw:857
 func TestBotGoroutineRace(t *testing.T) {
 	h := newHub()
 	code, err := h.create(3, 2, 42)
@@ -24,7 +24,7 @@ func TestBotGoroutineRace(t *testing.T) {
 		t.Fatal("방이 없음")
 	}
 
-//line server/server.w:877
+//line server/server.gw:877
 	for i := 0; i < 40; i++ {
 		g.mu.Lock()
 		done := g.state.Over() || g.state.ToAct() != 0
@@ -51,9 +51,9 @@ func TestBotGoroutineRace(t *testing.T) {
 		}
 	}
 
-//line server/server.w:871
+//line server/server.gw:871
 
-//line server/server.w:913
+//line server/server.gw:913
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
 	time.AfterFunc(2*time.Second, func() { close(stop) })
@@ -79,10 +79,10 @@ func TestBotGoroutineRace(t *testing.T) {
 	busy(func() { _, _ = h.create(2, 1, 1) })
 	wg.Wait()
 
-//line server/server.w:872
+//line server/server.gw:872
 }
 
-//line server/server.w:943
+//line server/server.gw:943
 func TestSpectatorTakesNoSeat(t *testing.T) {
 	h := newHub()
 	code, err := h.create(2, 1, 7) // 자리 둘 가운데 하나는 봇
@@ -93,7 +93,7 @@ func TestSpectatorTakesNoSeat(t *testing.T) {
 		t.Fatal(err) // 남은 사람 자리 하나를 채운다
 	}
 
-//line server/server.w:959
+//line server/server.gw:959
 	if _, _, err := h.join(code, "늦은이"); err == nil {
 		t.Error("자리가 다 찼는데 참가가 성공함")
 	}
@@ -109,9 +109,9 @@ func TestSpectatorTakesNoSeat(t *testing.T) {
 		t.Errorf("관전자 이름이 %q", h.sessionName(tok))
 	}
 
-//line server/server.w:953
+//line server/server.gw:953
 
-//line server/server.w:977
+//line server/server.gw:977
 	sv, pv := g.view(player), g.view(0)
 	if len(pv.Players[0].Hand) == 0 {
 		t.Error("자리 있는 이가 제 손패를 못 봄")
@@ -125,5 +125,5 @@ func TestSpectatorTakesNoSeat(t *testing.T) {
 		t.Errorf("관전자에게 둘 수 있는 수가 있음: %v", sv.Legal)
 	}
 
-//line server/server.w:954
+//line server/server.gw:954
 }

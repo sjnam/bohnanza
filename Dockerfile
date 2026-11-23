@@ -1,6 +1,6 @@
 # 보난자 게임 서버 이미지.
 # tangle된 Go 소스(bohnanza.go, bot/bot.go, server/server.go 등)를 그대로
-# 빌드하므로 이미지 안에서 gtangle이 필요 없다. .w를 고쳤다면 호스트에서
+# 빌드하므로 이미지 안에서 gtangle이 필요 없다. .gw를 고쳤다면 호스트에서
 # `make tangle`로 .go를 갱신한 뒤 다시 빌드한다.
 
 FROM golang:1.26-alpine AS build

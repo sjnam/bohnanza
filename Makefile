@@ -1,13 +1,13 @@
 # 보난자 문학적 프로그램 빌드용 Makefile.
 #
 #   make          # tangle + 문서 조판
-#   make tangle   # .w -> .go
+#   make tangle   # .gw -> .go
 #   make doc      # PDF 조판 (한글이라 luatex)
 #   make test     # go test ./...
 #   make arena    # 봇 실력 측정 (go test -v ./ai)
 #   make cli      # CLI 실행 (예: make cli ARGS="3 1 42")
 #   make serve    # 서버 실행 (예: make serve ARGS=":8080")
-#   make clean    # 생성물 삭제 (.w 원본은 남김)
+#   make clean    # 생성물 삭제 (.gw 원본은 남김)
 
 GTANGLE ?= gtangle
 GWEAVE  ?= gweave
@@ -19,31 +19,31 @@ all: tangle doc
 
 tangle: engine/engine.go cli/cli.go server/server.go ai/ai.go
 
-engine/engine.go: engine/engine.w
-	$(GTANGLE) engine/engine.w
+engine/engine.go: engine/engine.gw
+	$(GTANGLE) engine/engine.gw
 
-cli/cli.go: cli/cli.w
-	$(GTANGLE) cli/cli.w
+cli/cli.go: cli/cli.gw
+	$(GTANGLE) cli/cli.gw
 
-server/server.go: server/server.w
-	$(GTANGLE) server/server.w
+server/server.go: server/server.gw
+	$(GTANGLE) server/server.gw
 
-ai/ai.go: ai/ai.w
-	$(GTANGLE) ai/ai.w
+ai/ai.go: ai/ai.gw
+	$(GTANGLE) ai/ai.gw
 
 doc: engine/engine.pdf cli/cli.pdf server/server.pdf ai/ai.pdf
 
-engine/engine.pdf: engine/engine.w
-	cd engine && $(GWEAVE) engine.w && luatex engine.tex </dev/null
+engine/engine.pdf: engine/engine.gw
+	cd engine && $(GWEAVE) engine.gw && luatex engine.tex </dev/null
 
-cli/cli.pdf: cli/cli.w
-	cd cli && $(GWEAVE) cli.w && luatex cli.tex </dev/null
+cli/cli.pdf: cli/cli.gw
+	cd cli && $(GWEAVE) cli.gw && luatex cli.tex </dev/null
 
-server/server.pdf: server/server.w
-	cd server && $(GWEAVE) server.w && luatex server.tex </dev/null
+server/server.pdf: server/server.gw
+	cd server && $(GWEAVE) server.gw && luatex server.tex </dev/null
 
-ai/ai.pdf: ai/ai.w
-	cd ai && $(GWEAVE) ai.w && luatex ai.tex </dev/null
+ai/ai.pdf: ai/ai.gw
+	cd ai && $(GWEAVE) ai.gw && luatex ai.tex </dev/null
 
 test: tangle
 	go test ./...
